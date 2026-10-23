@@ -17,7 +17,7 @@ from .. import llm
 from ..agents import arbiter, concierge, demand, orchestrator, wish
 from ..agents.compiler import compile_text
 from ..agents.dedup import short_street
-from ..agents.interviewer import parse_with_llm, render_summary
+from ..agents.interviewer import fields_text, missing_text, parse_with_llm, render_summary
 from ..config import settings
 from ..db import get_session
 from ..geo.analysis import HotelGeo
@@ -131,7 +131,7 @@ def hotels(q: str = "", limit: int = 400, session: Session = Depends(get_session
 def hotel(hotel_id: str, session: Session = Depends(get_session)):
     h = _hotel_or_404(session, hotel_id)
     card = hotel_card(session, h)
-    card["questions"] = [question_dict(q) for q in session.scalars(
+    card["questions"] = [question_dict(q, session) for q in session.scalars(
         select(Question).where(Question.hotel_id == h.id).order_by(desc(Question.id)).limit(30))]
     card["conflicts"] = [conflict_dict(c, session) for c in session.scalars(
         select(Conflict).where(Conflict.hotel_id == h.id).order_by(desc(Conflict.id)).limit(20))]
@@ -148,7 +148,8 @@ def hotel_facts(hotel_id: str, char_key: str | None = None, session: Session = D
     stmt = select(Fact).where(Fact.hotel_id == hotel_id).order_by(desc(Fact.id))
     if char_key:
         stmt = stmt.where(Fact.char_key == char_key)
-    return {"items": [fact_dict(f) for f in session.scalars(stmt.limit(200))]}
+    specs = all_specs(session, enabled_only=False)
+    return {"items": [fact_dict(f, specs) for f in session.scalars(stmt.limit(200))]}
 
 
 _geo_cache: OrderedDict[tuple, HotelGeo] = OrderedDict()
@@ -797,7 +798,8 @@ def hotelier_answer(qid: int, body: AnswerBody, user: str = Depends(check_token)
             if not parsed or not parsed["fields"]:
                 parsed = parse_answer(spec, body.text, (q.context or {}).get("fields"))
                 method = "rules"
-            out[key] = {**parsed, "method": method, "summary": render_summary(spec, parsed["fields"]) if parsed["fields"] else ""}
+            out[key] = {**parsed, "method": method, "summary": render_summary(spec, parsed["fields"]) if parsed["fields"] else "",
+                        "fields_text": fields_text(spec, parsed["fields"]), "missing_text": missing_text(spec, parsed.get("missing"))}
         return {"preview": out}
     run = orchestrator.create_run(session, "answer", hotel_id=q.hotel_id, char_keys=q.char_keys, trigger="hotelier",
                                   params={"question_id": q.id, "text": body.text, "answered_by": "hotelier"})

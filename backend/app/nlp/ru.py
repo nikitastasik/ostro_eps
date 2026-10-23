@@ -152,6 +152,12 @@ def has_any(text: str, stems: list[str]) -> bool:
 NEAR_M = 40  # ближе этого объект «прямо у» отеля: точность контуров OSM всё равно около 10–20 м
 
 
+def lower_first(text: str) -> str:
+    """«Из окон…» → «из окон…», «С какого этажа» → «с какого этажа» внутри фразы; аббревиатуры («ЖК …», «OSM …») не трогаем."""
+    word = text.split(" ", 1)[0]
+    return text if len(word) > 1 and word.isupper() else text[:1].lower() + text[1:]
+
+
 def dec(x: float, digits: int = 1) -> str:
     """Десятичная запятая: 0.85 → «0,85»."""
     return f"{x:.{digits}f}".replace(".", ",")

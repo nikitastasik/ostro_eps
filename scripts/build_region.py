@@ -560,7 +560,7 @@ def main() -> None:
         "mae_default": round(float(np.mean(errs_d)), 2) if errs_d else None,
         "within1_default": round(float(np.mean(np.array(errs_d) <= 1)), 3) if errs_d else None,
         "dsm_check": {"note": "оценка высоты по Copernicus DSM (30 м) проверена на 19 тыс. зданиях с этажностью OSM: "
-                              "корреляция ≈ 0.1, источник отклонён"},
+                              "корреляция ≈ 0,1, источник отклонён"},
     }
     print("levels imputation validation:", impute_stats, flush=True)
     for r in recs:

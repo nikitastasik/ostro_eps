@@ -26,7 +26,7 @@
     authority: [geo, hotelier_confirmed, hotelier]
     policy: computed_wins
   question:
-    text: Из каких номеров видно море и начиная с какого этажа? Видно ли его с нижних этажей?
+    text: Из каких номеров видно море и начиная с какого этажа?
     fields: [available, min_floor, best_facade]
   search:
     label: Вид на море

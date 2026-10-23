@@ -13,9 +13,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..agents.arbiter import SOURCE_RU
+from ..agents.interviewer import fields_text
 from ..config import settings
 from ..knowledge.registry import GROUPS, all_specs
 from ..models import AgentRun, AgentStep, Conflict, Fact, Hotel, Question, ResolvedValue, utcnow
+from ..nlp.ru import dec
 
 
 def iso(d: dt.datetime | None) -> str | None:
@@ -45,13 +47,91 @@ def check_token(authorization: str | None = Header(default=None)) -> str:
 
 
 # ---------------------------------------------------------------- сериализация
-def fact_dict(f: Fact) -> dict:
+# доказательства факта для человека: подписи по-русски, числа с запятой, без служебных полей
+EVIDENCE_RU = {
+    "method": "метод", "note": "примечание", "model": "модель", "algorithm": "алгоритм", "rule": "правило",
+    "confidence_factors": "из чего уверенность", "floors_checked": "проверено этажей", "months": "месяцы",
+    "start_offset_m": "до ближайшего узла пешеходного графа", "answer": "ответ отельера", "question": "вопрос",
+    "parse_method": "как разобран ответ", "missing": "не удалось извлечь", "validation": "проверка метода",
+    "score_formula": "формула", "hours_known": "с известными часами работы", "places_checked": "проверено объектов",
+    "tags": "теги OSM", "receiver_height_m": "высота точки у окна",
+}
+EVIDENCE_HIDDEN = {"fact_id", "question_id", "sunset_azimuths", "drive_speeds", "landmarks_checked", "peaks_checked",
+                   "target", "confirmed_fact_id", "answered_by", "building"}
+CONFIDENCE_RU = {
+    "base_model": "базовая уверенность модели", "levels": "этажность отеля", "levels_source": "откуда этажность",
+    "levels_factor": "поправка за этажность", "footprint_known": "контур здания", "footprint_factor": "поправка за контур",
+    "neighbours_known_height_share": "соседи с известной высотой", "neighbours_300m": "зданий в 300 м",
+    "obstacles_factor": "поправка за застройку",
+}
+LEVELS_SRC_RU = {"osm": "тег OSM", "osm_estimate": "оценка по соседям", "osm_height": "тег высоты OSM",
+                 "osm_parts": "3D-части здания в OSM", "neighbors": "оценка по соседям", "default": "по типу здания",
+                 "hotelier": "отельер", "none": "неизвестна"}
+
+
+def _num(x) -> str:
+    return str(int(x)) if float(x).is_integer() else dec(float(x), 2).rstrip("0").rstrip(",")
+
+
+def _confidence_part(k: str, v) -> str:
+    if k == "footprint_known":
+        return "известен" if v else "неизвестен"
+    if k == "levels":
+        return f"{v} эт." if v else "неизвестна"
+    if k == "levels_source":
+        return LEVELS_SRC_RU.get(v, str(v))
+    if k == "neighbours_known_height_share":
+        return f"{round(float(v) * 100)}%"
+    return _num(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else str(v)
+
+
+def _evidence_text(k: str, v, fields: dict) -> str | None:
+    if v is None or v == [] or v == {} or v == "":
+        return None
+    if k == "confidence_factors" and isinstance(v, dict):
+        return "; ".join(f"{CONFIDENCE_RU.get(a, a)} — {_confidence_part(a, b)}" for a, b in v.items())
+    if k == "parse_method":
+        return {"rules": "правилами", "llm": "языковой моделью"}.get(v, str(v))
+    if k == "missing" and isinstance(v, list):
+        return ", ".join((fields.get(x) or {}).get("title", x) for x in v)
+    if k == "validation" and isinstance(v, dict) and "mae_neighbors" in v:
+        n = f"{v['validated_on']:,}".replace(",", "\u00a0")
+        return f"кросс-валидация на {n} зданиях: ошибка {dec(v['mae_neighbors'], 2)} эт., ±1 этаж — {round(v['within1_neighbors'] * 100)}%"
+    if k == "tags" and isinstance(v, dict):
+        return ", ".join(f"{a}={b}" for a, b in v.items())
+    if k in ("start_offset_m", "receiver_height_m"):
+        return f"{_num(v)} м"
+    if isinstance(v, bool):
+        return "да" if v else "нет"
+    if isinstance(v, (int, float)):
+        return _num(v)
+    if isinstance(v, list):
+        return ", ".join(str(x) for x in v)
+    if isinstance(v, dict):
+        return "; ".join(f"{a}: {b}" for a, b in v.items())
+    return str(v)
+
+
+def evidence_view(ev: dict, spec: dict | None = None) -> list[dict]:
+    fields = {**(spec or {}).get("value_fields", {}), **(spec or {}).get("extra_fields", {})}
+    out = []
+    for k, v in (ev or {}).items():
+        if k in EVIDENCE_HIDDEN:
+            continue
+        text = _evidence_text(k, v, fields)
+        if text:
+            out.append({"label": EVIDENCE_RU.get(k, k), "text": text})
+    return out
+
+
+def fact_dict(f: Fact, specs: dict | None = None) -> dict:
     ev = dict(f.evidence or {})
     return {
         "id": f.id, "char_key": f.char_key, "source": f.source, "source_ru": SOURCE_RU.get(f.source, f.source),
         "source_detail": f.source_detail, "method": f.method, "summary": f.summary, "confidence": f.confidence,
         "observed_at": iso(f.observed_at), "valid_until": iso(f.valid_until),
         "stale": bool(f.valid_until and f.valid_until < utcnow()), "status": f.status, "evidence": ev,
+        "evidence_view": evidence_view(ev, (specs or {}).get(f.char_key)),
         "value": _trim_value(f.value), "run_id": f.run_id,
     }
 
@@ -92,6 +172,10 @@ def question_dict(q: Question, session: Session | None = None) -> dict:
         d["hotel_name"] = h.label if h else q.hotel_id
         specs = all_specs(session, enabled_only=False)
         d["titles"] = [specs[k]["title"] for k in q.char_keys or [] if k in specs]
+        d["parsed_view"] = [{"title": specs[k]["title"],
+                             "method": "языковой моделью" if (v or {}).get("method") == "llm" else "правилами",
+                             "text": fields_text(specs[k], (v or {}).get("fields") or {}) or "ничего не извлечено"}
+                            for k, v in (q.parsed or {}).items() if k in specs]
     return d
 
 
@@ -103,7 +187,7 @@ def conflict_dict(c: Conflict, session: Session) -> dict:
             "title": specs.get(c.char_key, {}).get("title", c.char_key), "field": c.field, "description": c.description,
             "status": c.status, "resolution": c.resolution, "resolved_by": c.resolved_by,
             "question_id": c.question_id, "created_at": iso(c.created_at), "resolved_at": iso(c.resolved_at),
-            "facts": [fact_dict(f) for f in facts if f is not None]}
+            "facts": [fact_dict(f, specs) for f in facts if f is not None]}
 
 
 def run_dict(r: AgentRun, steps: list[AgentStep] | None = None, session: Session | None = None) -> dict:

@@ -9,10 +9,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .. import llm
+from ..geo.proj import COMPASS_8, COMPASS_8_GEN, COMPASS_8_LONG, COMPASS_8_NOM
 from ..knowledge.registry import get_spec
 from ..models import Fact, Hotel, Question, utcnow
 from ..nlp.answer_parser import parse_answer
-from ..nlp.ru import dec
+from ..nlp.ru import dec, lower_first
 from ..tools.base import plural
 from . import arbiter
 
@@ -24,7 +25,8 @@ WINDOWS_RU = {"standard": "обычные стеклопакеты (≈−25 д�
 WHEEL_RU = {"yes": "доступен для гостей на коляске", "limited": "доступен частично", "no": "не приспособлен для коляски"}
 VALUE_RU = {**ANIMALS_RU, **SIDE_RU, "night": "за сутки", "stay": "за проживание", "all": "во всех номерах",
             "some": "в части номеров"}
-FIELD_VALUES_RU = {"windows": WINDOWS_RU, "wheelchair": WHEEL_RU}
+FIELD_VALUES_RU = {"windows": WINDOWS_RU, "wheelchair": WHEEL_RU,
+                   "quality": {"none": "не видно", "glimpse": "краешком", "partial": "частично", "wide": "широко"}}
 
 
 def _yn(v) -> str:
@@ -72,7 +74,8 @@ def render_summary(spec: dict, f: dict) -> str:
         cats = f.get("categories") or []
         parts = []
         for c in cats:
-            side = SIDE_RU.get(c.get("side"), "") or (f"на {c['facade']}" if c.get("facade") else "")
+            fc = c.get("facade")
+            side = SIDE_RU.get(c.get("side"), "") or (f"на {COMPASS_8_LONG[COMPASS_8.index(fc)]}" if fc in COMPASS_8 else "")
             fl = c.get("floors")
             fl_txt = f" ({fl[0]}–{fl[1]} эт.)" if fl and fl[1] else (f" (с {fl[0]} эт.)" if fl else "")
             parts.append(f"{c['name']} — {side}{fl_txt}")
@@ -94,13 +97,16 @@ def render_summary(spec: dict, f: dict) -> str:
         if f.get("available") is False:
             return p + what.replace("видно", "не видно").replace("виден", "не виден").replace("видны", "не видны")
         s = p + what
+        side = f.get("best_facade")
+        compass_side = side in COMPASS_8
+        if compass_side:
+            s += f" из окон {COMPASS_8_GEN[COMPASS_8.index(side)]} стороны"
         if f.get("min_floor") == 1:
-            s += " из всех номеров"
+            s += " с 1-го этажа" if compass_side else " из всех номеров"
         elif f.get("min_floor"):
             s += f" с {f['min_floor']}-го этажа"
-        side = f.get("best_facade")
-        if side:
-            s += " (" + (SIDE_RU.get(side) or f"сторона {side}") + ")"
+        if side and not compass_side:
+            s += f" (окна {SIDE_RU.get(side, side)})"
         return s
     if k == "car_access":
         parts = []
@@ -143,31 +149,39 @@ def ask_hotelier(session: Session, hotel: Hotel, spec: dict, reason: str = "miss
     return q, True
 
 
-def _lower_first(text: str) -> str:
-    """«Из окон…» → «из окон…» внутри фразы; аббревиатуры («ЖК …») не трогаем."""
-    return text[:1].lower() + text[1:] if text[1:2].islower() else text
-
-
 def _field_title(spec: dict, key: str) -> str:
     vf = {**spec.get("value_fields", {}), **spec.get("extra_fields", {})}
-    return _lower_first((vf.get(key) or {}).get("title") or key)
+    return lower_first((vf.get(key) or {}).get("title") or key)
 
 
-def _fields_text(spec: dict, fields: dict) -> str:
-    """Поля ответа для журнала: «максимальный вес — 10; доплата — 500»."""
+def _side_text(side: str | None, facade: str | None) -> str:
+    if side in SIDE_RU:
+        return SIDE_RU[side]
+    return f"на {COMPASS_8_LONG[COMPASS_8.index(facade)]}" if facade in COMPASS_8 else "?"
+
+
+def fields_text(spec: dict, fields: dict) -> str:
+    """Поля ответа по-русски: «максимальный вес — 10; доплата — 500; лучшая сторона — западная»."""
     def fmt(k, v):
         names = FIELD_VALUES_RU.get(k, VALUE_RU)
         if isinstance(v, bool):
             return "да" if v else "нет"
+        if isinstance(v, str) and v in COMPASS_8:
+            return COMPASS_8_NOM[COMPASS_8.index(v)]
         if isinstance(v, list) and all(isinstance(x, dict) for x in v):
-            return ", ".join(f"{x.get('name', '?')}: {SIDE_RU.get(x.get('side'), x.get('side') or x.get('facade') or '?')}"
-                             for x in v) or "—"
+            return ", ".join(f"{x.get('name', '?')} — {_side_text(x.get('side'), x.get('facade'))}" for x in v) or "—"
         if isinstance(v, list):
             return ", ".join(str(names.get(x, x)) for x in v) or "—"
         if isinstance(v, dict):
             return json.dumps(v, ensure_ascii=False)
-        return str(names.get(v, v)) if isinstance(v, str) else f"{v:g}" if isinstance(v, float) else str(v)
+        if isinstance(v, float):
+            return str(int(v)) if v.is_integer() else dec(v, 1)
+        return str(names.get(v, v)) if isinstance(v, str) else str(v)
     return "; ".join(f"{_field_title(spec, k)} — {fmt(k, v)}" for k, v in fields.items())
+
+
+def missing_text(spec: dict, missing: list[str] | None) -> str:
+    return ", ".join(_field_title(spec, k) for k in missing or [])
 
 
 def ask_clarification(session: Session, hotel_id: str, spec: dict, primary: Fact, other: Fact, fld: dict, a, b,
@@ -178,7 +192,7 @@ def ask_clarification(session: Session, hotel_id: str, spec: dict, primary: Fact
     base = (spec.get("question") or {}).get("text") or f"Уточните, пожалуйста: {spec['title'].lower()}?"
     src = arbiter.SOURCE_RU
     if other.source in {"hotelier", "hotelier_confirmed"}:
-        text = (f"По нашим данным ({src.get(primary.source, primary.source)}): {_lower_first(primary.summary.rstrip('.'))}. "
+        text = (f"По нашим данным ({src.get(primary.source, primary.source)}): {lower_first(primary.summary.rstrip('.'))}. "
                 f"В вашем ответе: {other.summary.replace('Со слов отельера: ', '').rstrip('.')}. "
                 f"Помогите разобраться — {base[0].lower() + base[1:]}")
     else:
@@ -237,8 +251,8 @@ def answer_question(session: Session, question: Question, text: str, answered_by
             method = "rules"
         if logger:
             logger.step("Интервьюер", "llm" if method == "llm" else "decision",
-                        f"Ответ разобран ({'LLM' if method == 'llm' else 'правила'}): "
-                        f"{_fields_text(spec, parsed['fields']) or 'ничего не извлечено'}"
+                        f"Ответ разобран {'языковой моделью' if method == 'llm' else 'правилами'}: "
+                        f"{fields_text(spec, parsed['fields']) or 'ничего не извлечено'}"
                         + (f"; в ответе нет: {', '.join(_field_title(spec, f) for f in parsed['missing'])}"
                            if parsed["missing"] else ""),
                         char_key=key, payload=parsed)
@@ -263,8 +277,8 @@ def answer_question(session: Session, question: Question, text: str, answered_by
         rv = arbiter.resolve(session, hotel.id, spec, run_id=getattr(logger, "run_id", None), logger=logger,
                              reason="hotelier_answer")
         if logger:
-            logger.step("Арбитр", "result", f"Итог «{spec['title']}»: {rv.summary or '—'} "
-                        f"[{arbiter.STATUS_RU.get(rv.status, rv.status)}, уверенность {dec(rv.confidence, 2)}]",
+            logger.step("Арбитр", "result", f"Итог «{spec['title']}»: "
+                        f"{arbiter.outcome_text(rv, arbiter.STATUS_RU.get(rv.status, rv.status))}",
                         char_key=key, payload={"status": rv.status, "confidence": rv.confidence})
     question.parsed = result
     question.parse_method = next((v["method"] for v in result.values()), None)

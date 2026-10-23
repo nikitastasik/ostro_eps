@@ -50,8 +50,8 @@ function ResultCard({ r, rank, hl, onHover, q }: { r: SearchResult; rank: number
         <span className="tiny muted">#{rank}</span>
       </div>
       <div>
-        <div className="row between" style={{ alignItems: "flex-start" }}>
-          <div>
+        <div className="row between wrap" style={{ alignItems: "flex-start" }}>
+          <div style={{ flex: "1 1 240px", minWidth: 0 }}>
             <h3 style={{ marginBottom: 2 }}><Link to={href(h.id)}>{h.name}</Link></h3>
             <div className="small muted">{KIND_RU[h.kind] || h.kind}{h.stars ? ` · ${"★".repeat(h.stars)}` : ""}{h.address ? ` · ${h.address}` : ""}{h.levels ? ` · ${h.levels} эт.` : ""}</div>
             {(r.others || []).length > 0 && (
@@ -61,7 +61,7 @@ function ResultCard({ r, rank, hl, onHover, q }: { r: SearchResult; rank: number
               </div>
             )}
           </div>
-          <div className="row">
+          <div className="row wrap">
             <button className={`btn small ${cmp.has(h.id) ? "primary" : ""}`} onClick={() => cmp.toggle(h.id, h.name, q)}>
               {cmp.has(h.id) ? "В сравнении" : "Сравнить"}
             </button>
@@ -162,7 +162,7 @@ export default function SearchPage({ meta }: { meta: Meta | null }) {
               })}
               {res.query.criteria.length === 0 && <span className="muted small">не нашёл знакомых характеристик</span>}
             </div>
-            <span className="small muted">{results.length} подходящих из {res.total}</span>
+            <span className="small muted" title="Корпуса одного комплекса показаны одной карточкой">лучшие {results.length} из {res.total} {plural(res.total, "отеля", "отелей", "отелей")}</span>
           </div>
           {res.query.unmatched.length > 0 && (
             <div className="notice warn small mt-s">

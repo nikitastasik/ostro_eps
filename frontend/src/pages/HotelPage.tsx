@@ -5,7 +5,7 @@ import MapView from "../MapView";
 import Panorama from "../Panorama";
 import { WishButton } from "../Wish";
 import RunLog, { RunDrawer } from "../RunLog";
-import { Confidence, ErrorBox, fmtDate, Icon, KIND_RU, NeedsList, plural, Sources, Spinner, StatusBadge, useAsync, useCompare, useToast } from "../ui";
+import { Confidence, ErrorBox, fmtDate, Icon, KIND_RU, NeedsList, plural, REASON_RU, RUN_KIND_RU, Sources, Spinner, StatusBadge, TRIGGER_RU, useAsync, useCompare, useToast } from "../ui";
 
 function noiseColor(db?: number) {
   if (db == null) return "#9aa6b8";
@@ -16,30 +16,11 @@ function noiseColor(db?: number) {
   return "#e0464b";
 }
 
-const EVIDENCE_RU: Record<string, string> = {
-  method: "метод", note: "примечание", model: "модель", algorithm: "алгоритм", rule: "правило", confidence_factors: "из чего уверенность",
-  floors_checked: "проверено этажей", start_offset_m: "до ближайшего узла графа, м", answer: "ответ отельера", question: "вопрос",
-  parse_method: "как разобран ответ", missing: "не удалось извлечь", validation: "проверка метода", score_formula: "формула",
-  hours_known: "с известными часами работы", places_checked: "проверено объектов", tags: "теги OSM", receiver_height_m: "высота приёмника, м",
-};
-
-function EvidenceView({ ev }: { ev: Record<string, any> }) {
-  const keys = Object.keys(ev || {}).filter((k) => !["fact_id", "question_id", "sunset_azimuths", "drive_speeds", "landmarks_checked", "peaks_checked", "target", "confirmed_fact_id", "answered_by"].includes(k));
-  if (!keys.length) return null;
+function EvidenceView({ items }: { items?: { label: string; text: string }[] }) {
+  if (!items?.length) return null;
   return (
     <dl className="kv mt-s">
-      {keys.map((k) => {
-        const v = ev[k];
-        let txt: string;
-        if (v && typeof v === "object" && !Array.isArray(v)) {
-          txt = Object.entries(v).map(([a, b]) => `${a}: ${typeof b === "number" ? Math.round((b as number) * 100) / 100 : String(b)}`).join("; ");
-        } else if (Array.isArray(v)) {
-          txt = v.join(", ");
-        } else {
-          txt = String(v);
-        }
-        return [<dt key={k + "t"}>{EVIDENCE_RU[k] || k}</dt>, <dd key={k + "d"} className="small">{txt}</dd>];
-      })}
+      {items.map((x) => [<dt key={x.label + "t"}>{x.label}</dt>, <dd key={x.label + "d"} className="small">{x.text}</dd>])}
     </dl>
   );
 }
@@ -87,7 +68,7 @@ function CharItem({ c, hotelId, onRecalc }: { c: CharValue; hotelId: string; onR
               </div>
               <div className="small mt-s">{f.summary}</div>
               <div className="tiny muted">{f.source_detail}</div>
-              <EvidenceView ev={f.evidence} />
+              <EvidenceView items={f.evidence_view} />
             </div>
           ))}
           {facts.data && facts.data.items.length === 0 && <div className="small muted">Фактов пока нет</div>}
@@ -282,8 +263,8 @@ export default function HotelPage() {
               <div className="row between"><span className={`badge ${q.status === "open" ? "asked" : "ok"}`}>{q.status === "open" ? "ждёт ответа" : q.status === "answered" ? "отвечен" : "закрыт"}</span><span className="tiny muted">{fmtDate(q.created_at, true)}</span></div>
               <div className="small mt-s">{q.text}</div>
               {q.answer_text && <div className="small mt-s"><b>Ответ{q.answered_by === "simulator" ? " (симуляция)" : ""}:</b> {q.answer_text}</div>}
-              {q.parsed && Object.entries(q.parsed).map(([k, v]: [string, any]) => (
-                <div key={k} className="tiny muted mt-s">Агент разложил ({v.method === "llm" ? "LLM" : "правила"}): <span className="mono">{JSON.stringify(v.fields)}</span></div>
+              {(q.parsed_view || []).map((p) => (
+                <div key={p.title} className="tiny muted mt-s">Агент разложил ответ {p.method}: {p.text}</div>
               ))}
             </div>
           ))}
@@ -302,7 +283,7 @@ export default function HotelPage() {
           <h2 className="mt">История изменений</h2>
           {(h.changes || []).length === 0 && <div className="small muted">Изменений пока не было</div>}
           {(h.changes || []).map((c, i) => (
-            <div key={i} className="small mt-s"><span className="tiny muted">{fmtDate(c.at, true)} · {c.reason}</span><br /><s className="muted">{c.old}</s><br />{c.new}</div>
+            <div key={i} className="small mt-s"><span className="tiny muted">{fmtDate(c.at, true)} · {REASON_RU[c.reason] || c.reason}</span><br /><s className="muted">{c.old}</s><br />{c.new}</div>
           ))}
         </div>
       </div>
@@ -313,7 +294,7 @@ export default function HotelPage() {
           <div>
             {(h.runs || []).map((r) => (
               <div key={r.id} className="row between" style={{ padding: "7px 0", borderBottom: "1px solid #edf0f5" }}>
-                <span className="small"><b>#{r.id}</b> {r.kind} · {r.trigger} · <span className="muted">{fmtDate(r.created_at, true)}</span><br /><span className="tiny muted">{r.summary}</span></span>
+                <span className="small"><b>#{r.id}</b> {RUN_KIND_RU[r.kind] || r.kind} · {TRIGGER_RU[r.trigger] || r.trigger} · <span className="muted">{fmtDate(r.created_at, true)}</span><br /><span className="tiny muted">{r.summary}</span></span>
                 <button className="btn small" onClick={() => setOpenRun(r.id)}>Шаги</button>
               </div>
             ))}

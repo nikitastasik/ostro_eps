@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, ViewData } from "./api";
 import RaysMap from "./RaysMap";
-import { ErrorBox, Spinner } from "./ui";
+import { ErrorBox, num, Spinner } from "./ui";
 
 const CLS_COLOR: Record<number, string> = { 0: "#c9b48a", 1: "#2f86e6", 2: "#8a93a3", 3: "#5fae63", 4: "#8d76b8" };
 const CLS_RU: Record<number, string> = { 0: "склоны и холмы", 1: "море", 2: "здания", 3: "деревья", 4: "горы > 450 м" };
@@ -111,7 +111,7 @@ export default function Panorama({ hotelId, initialFacade, initialFloor }: { hot
         {/* профиль горизонта по классам */}
         {view.bars.map((b, i) => (
           <rect key={i} x={b.x} y={b.y} width={view.step + 0.6} height={Math.max(0, H - b.y)} fill={CLS_COLOR[b.cls] || "#aaa"} opacity={0.95}>
-            <title>{`${Math.round(data.azimuths[i])}°: горизонт ${b.h.toFixed(1)}° — ${CLS_RU[b.cls] || ""}${b.d ? `, ${b.d >= 1000 ? (b.d / 1000).toFixed(1) + " км" : Math.round(b.d) + " м"}` : ""}${b.sea ? "; море видно" : ""}`}</title>
+            <title>{`${Math.round(data.azimuths[i])}°: горизонт ${num(b.h, 1)}° — ${CLS_RU[b.cls] || ""}${b.d ? `, ${b.d >= 1000 ? num(b.d / 1000, 1) + " км" : Math.round(b.d) + " м"}` : ""}${b.sea ? "; море видно" : ""}`}</title>
           </rect>
         ))}
         {/* полоса «в этом направлении видно море» */}

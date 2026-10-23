@@ -99,7 +99,13 @@ def named(kind: str, name: str | None, adj: str | None = None) -> str:
         return f"{head} {rest}"
     if k in low:
         return name + (f" ({adj})" if adj else "")
+    if kind == "парк" and INSTITUTION_RE.search(name):
+        return f"{head} на территории {quote(name)}"
     return f"{head} {quote(name)}"
+
+
+# парк, названный по санаторию или отелю: «парк на территории санатория», а не «парк „Санаторий …“»
+INSTITUTION_RE = re.compile(r"санатори|пансионат|отел|гостиниц|\bФГУ\b|база отдыха|лагер|hotel|resort", re.I)
 
 
 TOOLS: dict[str, Tool] = {}

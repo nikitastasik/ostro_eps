@@ -16,6 +16,7 @@ export interface Fact {
   stale: boolean;
   status: string;
   evidence: Record<string, unknown>;
+  evidence_view?: { label: string; text: string }[];
   value: Record<string, unknown> | null;
 }
 
@@ -61,6 +62,7 @@ export interface Question {
   answered_by: string | null;
   created_at: string;
   answered_at: string | null;
+  parsed_view?: { title: string; method: string; text: string }[];
   utility?: { score: number; queries: number; text: string; example: { query: string; before: number; after: number; demo: boolean } | null };
 }
 

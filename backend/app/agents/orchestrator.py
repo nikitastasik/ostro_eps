@@ -115,12 +115,20 @@ def _check_stop() -> None:
         raise Stopped("запуск остановлен сбросом демо")
 
 
+STATS_RU = {"ok": "готово", "conflict": "противоречий", "asked": "спросили отельера", "unknown": "нет данных",
+            "stale": "устарело"}
+
+
+def stats_text(stats: dict) -> str:
+    return ", ".join(f"{STATS_RU.get(k, k)}: {v}" for k, v in stats.items() if v)
+
+
 def _run_collect(session: Session, run: AgentRun, logger: RunLogger) -> str:
     hotel = session.get(Hotel, run.hotel_id)
     if hotel is None:
         raise ValueError(f"отель {run.hotel_id} не найден")
     stats = collect_hotel(session, hotel, run.char_keys or None, logger, reason=run.trigger)
-    return ", ".join(f"{k}: {v}" for k, v in stats.items() if v)
+    return stats_text(stats)
 
 
 def _run_collect_all(session: Session, run: AgentRun, logger: RunLogger) -> str:
@@ -137,13 +145,12 @@ def _run_collect_all(session: Session, run: AgentRun, logger: RunLogger) -> str:
         if i % 20 == 0:
             session.commit()
             logger.step("Оркестратор", "plan", f"Обработано {i + 1}/{len(hotels)} отелей")
-    logger.step("Оркестратор", "result", f"Готово за {time.perf_counter() - t0:.0f} с: " +
-                ", ".join(f"{k}: {v}" for k, v in total.items() if v), payload=total)
-    return ", ".join(f"{k}: {v}" for k, v in total.items() if v)
+    logger.step("Оркестратор", "result", f"Готово за {time.perf_counter() - t0:.0f} с: " + stats_text(total), payload=total)
+    return stats_text(total)
 
 
 def _run_answer(session: Session, run: AgentRun, logger: RunLogger) -> str:
-    from .interviewer import answer_question
+    from .interviewer import answer_question, fields_text
     from .simulator import simulate_answer
 
     q = session.get(Question, run.params["question_id"])
@@ -158,7 +165,9 @@ def _run_answer(session: Session, run: AgentRun, logger: RunLogger) -> str:
     else:
         logger.step("Отельер", "result", f"Ответ: «{text}»", char_key=(q.char_keys or [None])[0])
     res = answer_question(session, q, text, answered_by=who, logger=logger)
-    return "; ".join(f"{k}: {', '.join(v['fields'].keys()) or 'не разобрано'}" for k, v in res.items())
+    specs = all_specs(session, enabled_only=False)
+    return "; ".join(f"{specs[k]['title'] if k in specs else k}: {fields_text(specs[k], v['fields']) if k in specs and v['fields'] else 'не разобрано'}"
+                     for k, v in res.items())
 
 
 def _run_actualize(session: Session, run: AgentRun, logger: RunLogger) -> str:

@@ -77,9 +77,9 @@ function QuestionCard({ q, onDone }: { q: Question; onDone: () => void }) {
       <ErrorBox error={error} />
       {preview && Object.entries(preview).map(([k, v]: [string, any]) => (
         <div key={k} className="notice small mt-s">
-          <b>Агент понял ({v.method === "llm" ? "LLM" : "правила"}):</b> {v.summary || "ничего не удалось извлечь"}
-          <div className="mono tiny mt-s">{JSON.stringify(v.fields)}</div>
-          {v.missing?.length > 0 && <div className="tiny">Не извлечено: {v.missing.join(", ")} — можно дописать в ответ</div>}
+          <b>Агент понял ({v.method === "llm" ? "языковая модель" : "правила"}):</b> {v.summary || "ничего не удалось извлечь"}
+          {v.fields_text && <div className="tiny mt-s">Поля: {v.fields_text}</div>}
+          {v.missing_text && <div className="tiny">Не извлечено: {v.missing_text} — можно дописать в ответ</div>}
         </div>
       ))}
       {steps && <div className="mt-s"><b className="small">Что сделали агенты:</b><Steps steps={steps} /></div>}
@@ -240,7 +240,7 @@ export default function HotelierPage() {
                       <div key={x.id} className="qcard">
                         <div className="small">{x.text}</div>
                         <div className="small mt-s"><b>Ответ:</b> {x.answer_text}</div>
-                        {x.parsed && Object.entries(x.parsed).map(([k, v]: [string, any]) => <div key={k} className="tiny mono muted mt-s">{JSON.stringify(v.fields)}</div>)}
+                        {(x.parsed_view || []).map((p) => <div key={p.title} className="tiny muted mt-s">Агент разложил ответ {p.method}: {p.text}</div>)}
                       </div>
                     ))}
                   </>

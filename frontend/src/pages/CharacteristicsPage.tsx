@@ -4,6 +4,11 @@ import { api } from "../api";
 import { RunDrawer } from "../RunLog";
 import { ErrorBox, Icon, pct, Spinner, useAsync, useToast } from "../ui";
 
+const WHEN_RU: Record<string, string> = {
+  missing: "если в открытых данных нет", low_confidence: "если уверенность ниже порога", verify: "подтвердить расчёт",
+  always_once: "один раз у каждого отеля",
+};
+
 const EXAMPLES = [
   "Есть ли круглосуточная аптека в 10 минутах пешком",
   "Банкомат в пределах 300 м",
@@ -20,7 +25,7 @@ function CompiledSpec({ spec }: { spec: any }) {
       <p className="small muted">{spec.description}</p>
       <dl className="kv">
         <dt>Рецепт агента</dt>
-        <dd>{spec.recipe.map((s: any, i: number) => <div key={i} className="mono tiny">{s.tool} {s.params ? JSON.stringify(s.params) : ""}{s.when ? ` (когда: ${s.when})` : ""}</div>)}</dd>
+        <dd>{spec.recipe.map((s: any, i: number) => <div key={i} className="mono tiny">{s.tool} {s.params ? JSON.stringify(s.params) : ""}{s.when ? ` (${WHEN_RU[s.when] || s.when})` : ""}</div>)}</dd>
         <dt>Поля значения</dt>
         <dd className="small">{Object.entries(spec.value_fields || {}).map(([k, v]: [string, any]) => `${k} (${v.type}) — ${v.title}`).join("; ")}</dd>
         {spec.question && <><dt>Вопрос отельеру</dt><dd className="small">{spec.question.text}</dd></>}
@@ -110,7 +115,7 @@ export default function CharacteristicsPage() {
                     </td>
                     <td className="small">
                       {c.recipe.map((s: any, i: number) => (
-                        <div key={i}><span className="mono tiny">{s.tool}</span> <span className="tiny muted">{s.agent}{s.when ? ` · ${s.when}` : ""}</span></div>
+                        <div key={i}><span className="mono tiny">{s.tool}</span> <span className="tiny muted">{s.agent}{s.when ? ` · ${WHEN_RU[s.when] || s.when}` : ""}</span></div>
                       ))}
                       {c.question && <div className="tiny muted mt-s">Вопрос: {c.question}</div>}
                     </td>

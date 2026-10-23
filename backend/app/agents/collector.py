@@ -14,7 +14,7 @@ import time
 from sqlalchemy import select
 
 from ..models import Fact, Question, utcnow
-from ..nlp.ru import dec
+from ..nlp.ru import dec, lower_first
 from ..tools.base import get_tool
 from . import arbiter
 from .context import HotelContext
@@ -99,7 +99,7 @@ def collect(ctx: HotelContext, spec: dict, run_id: int | None, logger, reason: s
             continue
         ms = int((time.perf_counter() - t0) * 1000)
         if res.status != "ok" or res.value is None:
-            logger.step(tool.agent, "result", f"{tool.title}: нет данных — {res.summary}", char_key=key, duration_ms=ms)
+            logger.step(tool.agent, "result", f"{tool.title}: нет данных — {lower_first(res.summary)}", char_key=key, duration_ms=ms)
             continue
         fact = save_fact(ctx, spec, name, res, run_id)
         got.append(res)
@@ -112,6 +112,6 @@ def collect(ctx: HotelContext, spec: dict, run_id: int | None, logger, reason: s
     if key == "building_levels":
         ctx.reset_geo()
     status_ru = arbiter.STATUS_RU.get(rv.status, rv.status)
-    logger.step("Арбитр", "result", f"Итог «{spec['title']}»: {rv.summary or '—'} [{status_ru}, уверенность {dec(rv.confidence, 2)}]",
+    logger.step("Арбитр", "result", f"Итог «{spec['title']}»: {arbiter.outcome_text(rv, status_ru)}",
                 char_key=key, payload={"status": rv.status, "confidence": rv.confidence, "sources": rv.sources})
     return rv

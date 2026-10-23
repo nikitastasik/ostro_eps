@@ -254,7 +254,7 @@ class HotelGeo:
             sides = sorted((k for k in bf if bf[k]["available"]), key=lambda k: bf[k]["min_floor"])
             main = sides[0]
             s = f"Море видно из окон {facade_gen(main)} стороны"
-            s += " с первого этажа" if bf[main]["min_floor"] == 1 else f" начиная с {ordinal_floor(bf[main]['min_floor'])}"
+            s += f" с {ordinal_floor(1)}" if bf[main]["min_floor"] == 1 else f" начиная с {ordinal_floor(bf[main]['min_floor'])}"
             s += f" (обзор до {bf[main]['max_width_deg']}°)"
             others = [k for k in sides[1:]]
             if others:

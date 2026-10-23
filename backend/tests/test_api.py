@@ -121,6 +121,8 @@ def test_conflict_clarification_cycle(client):
 
 def test_runtime_texts_are_clean(client):
     """Корректор по текстам поиска, карточек и сравнения: без «0 м», «≈0 мин», непарных кавычек и т. п."""
+    import re
+
     from app.nlp.textlint import anomalies
 
     bad = []
@@ -133,6 +135,16 @@ def test_runtime_texts_are_clean(client):
     cmp = client.get("/api/compare", params={"ids": ",".join(ids)}).json()
     bad += [("compare", row["title"], c["summary"], anomalies(c["summary"])) for row in cmp["rows"] for c in row["cells"]
             if anomalies(c["summary"])]
+    # доказательства фактов и разбор ответов отельеров — по-русски, без служебных ключей и десятичных точек
+    for hid in ids[:3]:
+        for f in client.get(f"/api/hotels/{hid}/facts").json()["items"]:
+            for x in f["evidence_view"]:  # теги OSM показываем как есть: это и есть доказательство
+                if anomalies(x["text"]) or (x["label"] != "теги OSM" and re.search(r"\b[a-z]+_[a-z_]+\b", x["text"])):
+                    bad.append(("evidence", hid, x["label"], x["text"]))
+        for q in client.get(f"/api/hotels/{hid}").json()["questions"]:
+            for x in q.get("parsed_view") or []:
+                if anomalies(x["text"]) or re.search(r"[{}\"]|\b[a-z]+_[a-z_]+\b", x["text"]):
+                    bad.append(("parsed", hid, x["title"], x["text"]))
     assert not bad, bad[:5]
 
 

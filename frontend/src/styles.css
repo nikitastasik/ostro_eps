@@ -81,6 +81,7 @@ input, textarea, select { font-family: inherit; font-size: 15px; }
 .tiny { font-size: 12px; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
 .mono, .small, .tiny { overflow-wrap: anywhere; }
+.btn, .btn.small, .chip { overflow-wrap: normal; }
 .nowrap { white-space: nowrap; }
 /* якоря (#view, #char-…, #scenario, вопросы) не прячутся под липкой шапкой */
 [id] { scroll-margin-top: 76px; }

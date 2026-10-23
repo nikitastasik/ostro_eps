@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "./api";
 import { Confidence, ErrorBox, Icon, NeedIcon, Sources, Spinner, useAsync, useToast } from "./ui";
 
@@ -24,6 +24,11 @@ function WishModal({ hotelId, q, onClose }: { hotelId: string; q: string; onClos
   const w = useAsync(() => api.wish(hotelId, q), [hotelId, q]);
   const toast = useToast();
   const d = w.data;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
   return (
     <div className="modal-back" onClick={onClose}>
       <div className="modal card" role="dialog" aria-label="Пожелание к бронированию" onClick={(e) => e.stopPropagation()}>

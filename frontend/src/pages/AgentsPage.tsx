@@ -3,11 +3,8 @@ import { Link, useSearchParams } from "react-router-dom";
 import { api, Conflict, HotelListItem, Question, Run } from "../api";
 import MapView from "../MapView";
 import RunLog, { RunDrawer } from "../RunLog";
-import { ErrorBox, fmtDate, Icon, SOURCE_RU, Spinner, useAsync, useToast } from "../ui";
+import { ErrorBox, fmtDate, Icon, REASON_RU, RUN_KIND_RU, SOURCE_RU, Spinner, TRIGGER_RU, useAsync, useToast } from "../ui";
 
-const KIND_RU: Record<string, string> = {
-  collect: "сбор по отелю", collect_all: "сбор по всем отелям", answer: "разбор ответа", actualize: "актуализация", scenario: "изменение среды", dedup: "склейка дублей",
-};
 
 function useInterval(fn: () => void, ms: number) {
   useEffect(() => {
@@ -98,7 +95,7 @@ export default function AgentsPage() {
           {runs.data?.items.map((r) => (
             <div key={r.id} className="row between" style={{ padding: "7px 0", borderBottom: "1px solid #edf0f5", cursor: "pointer" }} onClick={() => setSelRun(r.id)}>
               <div className="small">
-                <b>#{r.id}</b> {KIND_RU[r.kind] || r.kind}{r.hotel_name ? ` · ${r.hotel_name}` : ""} <span className="tiny muted">· {r.trigger} · {fmtDate(r.created_at, true)}</span>
+                <b>#{r.id}</b> {RUN_KIND_RU[r.kind] || r.kind}{r.hotel_name ? ` · ${r.hotel_name}` : ""} <span className="tiny muted">· {TRIGGER_RU[r.trigger] || r.trigger} · {fmtDate(r.created_at, true)}</span>
                 <div className="tiny muted">{r.summary || r.error || ""}</div>
               </div>
               <span className={`badge ${r.status === "done" ? "ok" : r.status === "error" ? "conflict" : "blue"}`}>{r.status}</span>
@@ -131,7 +128,7 @@ export default function AgentsPage() {
           <div style={{ maxHeight: 360, overflow: "auto" }}>
             {changes.data?.items.map((c) => (
               <div key={c.id} className="small" style={{ padding: "8px 0", borderBottom: "1px solid #edf0f5" }}>
-                <div className="tiny muted">{fmtDate(c.at, true)} · {c.reason} · <Link to={`/hotel/${encodeURIComponent(c.hotel_id)}`}>{c.hotel_name}</Link> · {c.title}</div>
+                <div className="tiny muted">{fmtDate(c.at, true)} · {REASON_RU[c.reason] || c.reason} · <Link to={`/hotel/${encodeURIComponent(c.hotel_id)}`}>{c.hotel_name}</Link> · {c.title}</div>
                 <div><s className="muted">{c.old}</s></div>
                 <div>{c.new}</div>
               </div>

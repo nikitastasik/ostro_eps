@@ -155,8 +155,32 @@ export function plural(n: number, one: string, few: string, many: string) {
 
 export function pct(v: number | null | undefined, digits = 0) {
   if (v === null || v === undefined || Number.isNaN(v)) return "—";
-  return `${(v * 100).toFixed(digits)}%`;
+  return `${num(v * 100, digits)}%`;
 }
+
+/** Число по-русски: десятичная запятая, тысячи через пробел (1 121; 84,8). */
+export function num(v: number | null | undefined, digits = 0) {
+  if (v === null || v === undefined || Number.isNaN(v)) return "—";
+  return v.toLocaleString("ru-RU", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+}
+
+export const RUN_KIND_RU: Record<string, string> = {
+  collect: "сбор по отелю", collect_all: "сбор по всем отелям", answer: "разбор ответа", actualize: "актуализация",
+  scenario: "изменение среды", dedup: "склейка дублей",
+};
+
+export const TRIGGER_RU: Record<string, string> = {
+  seed: "подготовка демо", bootstrap: "первый запуск", manual: "вручную", schedule: "по расписанию", simulator: "симулятор отельера",
+  autoreply: "автоответ симулятора", hotelier: "ответ отельера", hotelier_correction: "правка отельера",
+  new_characteristic: "новая характеристика", "change:building": "построили дом", "change:reset": "снесли построенное",
+};
+
+/** Почему изменилось знание (лента изменений) — причины и поводы запусков. */
+export const REASON_RU: Record<string, string> = {
+  ...TRIGGER_RU, hotelier_answer: "ответ отельера", hotelier_confirm: "отельер подтвердил", correction: "правка отельера",
+  conflict: "противоречие источников", conflict_resolved: "противоречие разобрано", stale: "перепроверка устаревшего",
+  "change:building": "рядом построили дом", "change:reset": "снесли построенное",
+};
 
 export const KIND_RU: Record<string, string> = {
   hotel: "Отель", guest_house: "Гостевой дом", hostel: "Хостел", apartment: "Апартаменты", motel: "Мотель", chalet: "Шале",

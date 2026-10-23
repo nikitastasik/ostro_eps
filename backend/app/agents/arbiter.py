@@ -27,6 +27,14 @@ STATUS_RU = {"ok": "готово", "conflict": "противоречие", "stal
 STALE_FACTOR = 0.6
 
 
+def outcome_text(rv: ResolvedValue, status_ru: str) -> str:
+    """Итог для журнала: «Море видно … [готово, уверенность 0,82]»; без значения — почему его нет."""
+    if rv.summary:
+        return f"{rv.summary} [{status_ru}, уверенность {dec(rv.confidence, 2)}]"
+    return {"asked": "значения пока нет — ждём ответа отельера",
+            "unknown": "значения нет — в открытых данных не нашлось"}.get(rv.status, f"значения нет [{status_ru}]")
+
+
 def _get(value: dict | None, path: str):
     cur = value
     for part in path.split("."):

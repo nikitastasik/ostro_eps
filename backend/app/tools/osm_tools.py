@@ -93,7 +93,7 @@ def nightlife(ctx, params) -> ToolResult:
     if ped_d and ped_d[0] < 250:
         parts.append(f"пешеходная улица{' ' + quote(ped_d[1]) if ped_d[1] else ''} в {_fmt_m(ped_d[0])}")
     return ToolResult(value, "; ".join(parts), 0.7, "osm", _detail(ctx, "amenity=bar/pub/nightclub/cafe/restaurant, highway=pedestrian"),
-                      evidence={"score_formula": "бары + 2·клубы + 0.25·кафе + 1.5 (пешеходная улица < 250 м)"})
+                      evidence={"score_formula": "бары + 2·клубы + 0,25·кафе + 1,5 (пешеходная улица ближе 250 м)"})
 
 
 @tool("osm.construction", "Стройки рядом", AGENT, ["OSM landuse=construction", "OSM building=construction"],

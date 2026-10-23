@@ -1,28 +1,29 @@
 import { api } from "../api";
-import { ErrorBox, pct, plural, SOURCE_RU, Spinner, useAsync } from "../ui";
+import { ErrorBox, num, pct, plural, SOURCE_RU, Spinner, useAsync } from "../ui";
 
 const HEIGHT_SRC_RU: Record<string, string> = {
   osm_levels: "тег этажности OSM", osm_height: "тег высоты OSM", osm_parts: "3D-части здания в OSM",
   neighbors: "оценка по соседям", default: "по типу здания",
 };
 
-function EvalBlock({ title, data, kind }: { title: string; data: any; kind: "answers" | "queries" }) {
+function EvalBlock({ title, data, kind, titles }: { title: string; data: any; kind: "answers" | "queries"; titles: Record<string, string> }) {
   if (!data) return null;
+  const names = (keys: string[]) => keys.map((k) => titles[k] || k).join(", ") || "—";
   return (
     <div className="card flat">
       <h3>{title}</h3>
       {kind === "answers" ? (
-        <div className="small">{data.answers} ответов, {data.fields} полей · точность <b>{pct(data.accuracy, 1)}</b> · precision {pct(data.precision, 1)} · recall {pct(data.recall, 1)}</div>
+        <div className="small">{data.answers} {plural(data.answers, "ответ", "ответа", "ответов")}, {data.fields} {plural(data.fields, "поле", "поля", "полей")} · точность <b>{pct(data.accuracy, 1)}</b> · precision {pct(data.precision, 1)} · recall {pct(data.recall, 1)}</div>
       ) : (
-        <div className="small">{data.queries} запросов · F1 <b>{data.f1?.toFixed(3)}</b> · precision {pct(data.precision, 1)} · recall {pct(data.recall, 1)} · точное совпадение {pct(data.exact_match, 0)}</div>
+        <div className="small">{data.queries} {plural(data.queries, "запрос", "запроса", "запросов")} · F1 <b>{num(data.f1, 3)}</b> · precision {pct(data.precision, 1)} · recall {pct(data.recall, 1)} · точное совпадение {pct(data.exact_match, 0)}</div>
       )}
       {data.errors?.length > 0 && (
         <details className="mt-s">
           <summary className="small muted">Ошибки ({data.errors.length})</summary>
           {data.errors.map((e: any, i: number) => (
-            <div key={i} className="tiny mono mt-s">{kind === "answers"
+            <div key={i} className="tiny mt-s">{kind === "answers"
               ? `«${e.answer}» · ${e.field}: ждали ${JSON.stringify(e.expected)}, получили ${JSON.stringify(e.got)}`
-              : `«${e.query}» · пропущено: ${e.missed.join(", ") || "—"} · лишнее: ${e.extra.join(", ") || "—"}`}</div>
+              : `«${e.query}» · пропущено: ${names(e.missed)} · лишнее: ${names(e.extra)}`}</div>
           ))}
         </details>
       )}
@@ -33,6 +34,7 @@ function EvalBlock({ title, data, kind }: { title: string; data: any; kind: "ans
 export default function MetricsPage() {
   const m = useAsync<any>(() => api.metrics(), []);
   const d = m.data;
+  const titles: Record<string, string> = Object.fromEntries((d?.per_characteristic || []).map((c: any) => [c.key, c.title]));
   return (
     <div className="page wide">
       <h1>Метрики качества</h1>
@@ -42,8 +44,8 @@ export default function MetricsPage() {
       {d && (
         <>
           <div className="grid four">
-            <div className="card kpi"><div className="v">{pct(d.coverage)}</div><div className="l">покрытие: пар «отель × характеристика» со значением ({d.hotels} отелей × {d.characteristics})</div></div>
-            <div className="card kpi"><div className="v">{pct(d.question_share)}</div><div className="l">доля пар, по которым агент спрашивал отельера · ответов {d.questions.answered} из {d.questions.total}</div></div>
+            <div className="card kpi"><div className="v">{pct(d.coverage)}</div><div className="l">покрытие: пар «отель × характеристика» со значением ({num(d.hotels)} {plural(d.hotels, "отель", "отеля", "отелей")} × {d.characteristics} {plural(d.characteristics, "характеристика", "характеристики", "характеристик")})</div></div>
+            <div className="card kpi"><div className="v">{pct(d.question_share)}</div><div className="l">доля пар, по которым агент спрашивал отельера · ответов {num(d.questions.answered)} из {num(d.questions.total)}</div></div>
             <div className="card kpi"><div className="v">{d.conflicts.detected}</div><div className="l">противоречий найдено · авто {d.conflicts.resolved_auto} · модератор {d.conflicts.resolved_moderator} · открыто {d.conflicts.open}</div></div>
             <div className="card kpi"><div className="v">{d.stale}</div><div className="l">устаревших значений · поисков {d.searches}</div></div>
           </div>
@@ -56,29 +58,29 @@ export default function MetricsPage() {
                 Без LLM работают правила; с ключом LLM запросы и ответы разбирает модель (замер: <span className="mono">scripts/evaluate.py --llm</span>).
               </p>
               <div className="col">
-                <EvalBlock title="Разбор ответов отельеров — отложенная выборка" data={d.eval.answers_holdout} kind="answers" />
-                <EvalBlock title="Разбор запросов гостей — отложенная выборка" data={d.eval.queries_holdout} kind="queries" />
-                <EvalBlock title="Ответы — dev" data={d.eval.answers_dev} kind="answers" />
-                <EvalBlock title="Запросы — dev" data={d.eval.queries_dev} kind="queries" />
-                <EvalBlock title="Ответы — настроечная" data={d.eval.answers} kind="answers" />
-                <EvalBlock title="Запросы — настроечная" data={d.eval.queries} kind="queries" />
+                <EvalBlock title="Разбор ответов отельеров — отложенная выборка" data={d.eval.answers_holdout} kind="answers" titles={titles} />
+                <EvalBlock title="Разбор запросов гостей — отложенная выборка" data={d.eval.queries_holdout} kind="queries" titles={titles} />
+                <EvalBlock title="Ответы — dev" data={d.eval.answers_dev} kind="answers" titles={titles} />
+                <EvalBlock title="Запросы — dev" data={d.eval.queries_dev} kind="queries" titles={titles} />
+                <EvalBlock title="Ответы — настроечная" data={d.eval.answers} kind="answers" titles={titles} />
+                <EvalBlock title="Запросы — настроечная" data={d.eval.queries} kind="queries" titles={titles} />
               </div>
             </div>
             <div className="card">
               <h2>Проверка геометодов</h2>
               <h3>Положение Солнца (NOAA) против PyEphem</h3>
-              <div className="small">Макс. ошибка времени заката <b>{d.eval.sun.max_time_error_min} мин</b>, азимута <b>{d.eval.sun.max_azimuth_error_deg}°</b> на 12 датах. <span className="muted">{d.eval.sun.reference}</span></div>
+              <div className="small">Макс. ошибка времени заката <b>{num(d.eval.sun.max_time_error_min, 1)} мин</b>, азимута <b>{num(d.eval.sun.max_azimuth_error_deg, 1)}°</b> на 12 датах. <span className="muted">{d.eval.sun.reference}</span></div>
               <div className="table-scroll"><table className="t mt-s">
                 <thead><tr><th>Дата</th><th>Закат</th><th>Эталон</th><th>Азимут</th><th>Эталон</th></tr></thead>
-                <tbody>{d.eval.sun.checks.map((c: any) => <tr key={c.date}><td>{c.date}</td><td>{c.sunset}</td><td>{c.ref_sunset}</td><td>{c.azimuth}°</td><td>{c.ref_azimuth}°</td></tr>)}</tbody>
+                <tbody>{d.eval.sun.checks.map((c: any) => <tr key={c.date}><td>{c.date}</td><td>{c.sunset}</td><td>{c.ref_sunset}</td><td>{num(c.azimuth, 1)}°</td><td>{num(c.ref_azimuth, 1)}°</td></tr>)}</tbody>
               </table></div>
               {d.eval.levels_imputation && (
                 <>
                   <h3 className="mt">Этажность зданий без тега</h3>
                   <div className="small">
-                    Кросс-валидация на {d.eval.levels_imputation.validated_on.toLocaleString("ru-RU")} размеченных зданиях:
-                    оценка по соседям — ошибка <b>{d.eval.levels_imputation.mae_neighbors} эт.</b>, в ±1 этаж <b>{pct(d.eval.levels_imputation.within1_neighbors)}</b>;
-                    значение по умолчанию — {d.eval.levels_imputation.mae_default} эт. и {pct(d.eval.levels_imputation.within1_default)}.
+                    Кросс-валидация на {num(d.eval.levels_imputation.validated_on)} размеченных зданиях:
+                    оценка по соседям — ошибка <b>{num(d.eval.levels_imputation.mae_neighbors, 2)} эт.</b>, в ±1 этаж <b>{pct(d.eval.levels_imputation.within1_neighbors)}</b>;
+                    значение по умолчанию — {num(d.eval.levels_imputation.mae_default, 2)} эт. и {pct(d.eval.levels_imputation.within1_default)}.
                   </div>
                   <div className="small muted mt-s">{d.eval.levels_imputation.dsm_check?.note}</div>
                 </>
@@ -87,8 +89,8 @@ export default function MetricsPage() {
                 <>
                   <h3 className="mt">Польза вопросов отельерам</h3>
                   <div className="small">
-                    Лучшие 20% открытых вопросов ({d.eval.demand.top_n} из {d.eval.demand.questions}) дают <b>{pct(d.eval.demand.top_share)}</b> всей пользы для спроса —
-                    прироста позиций отелей в топ-30 при ответе «да»; полезных вопросов — {d.eval.demand.useful}.
+                    Лучшие 20% открытых вопросов ({num(d.eval.demand.top_n)} из {num(d.eval.demand.questions)}) дают <b>{pct(d.eval.demand.top_share)}</b> всей пользы для спроса —
+                    прироста позиций отелей в топ-30 при ответе «да»; полезных вопросов — {num(d.eval.demand.useful)}.
                     {" "}Спрос: {d.eval.demand.demand_queries} {plural(d.eval.demand.demand_queries, "запрос", "запроса", "запросов")}, из них демо — {d.eval.demand.demo_queries}.
                   </div>
                 </>
@@ -117,7 +119,7 @@ export default function MetricsPage() {
                 <div className="small muted">Разметки пока нет: файл <span className="mono">data/eval/geo_gold.yaml</span> заполняется по фото номеров и панорамам.</div>
               )}
               <h3 className="mt">Данные</h3>
-              <div className="small">Зданий в модели застройки: {d.data_sources.buildings?.toLocaleString("ru-RU")} · источник высоты: {Object.entries(d.data_sources.height_sources || {}).map(([k, v]) => `${HEIGHT_SRC_RU[k] || k} — ${(v as number).toLocaleString("ru-RU")}`).join(", ")} · POI {d.data_sources.pois} · дорог {d.data_sources.roads?.toLocaleString("ru-RU")}</div>
+              <div className="small">Зданий в модели застройки: {num(d.data_sources.buildings)} · источник высоты: {Object.entries(d.data_sources.height_sources || {}).map(([k, v]) => `${HEIGHT_SRC_RU[k] || k} — ${num(v as number)}`).join(", ")} · POI {num(d.data_sources.pois)} · дорог {num(d.data_sources.roads)}</div>
             </div>
           </div>
 

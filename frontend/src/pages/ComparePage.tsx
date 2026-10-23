@@ -54,6 +54,7 @@ export default function ComparePage() {
             <h2 style={{ margin: 0 }}>Под ваш запрос</h2>
             <span className="small muted">«{q}» · <Link to={`/?q=${encodeURIComponent(q)}`}>к выдаче</Link></span>
           </div>
+          <p className="tiny muted mt-s">Лучший в строке — по вкладу в оценку: совпадение с учётом уверенности данных и доли подходящих номеров, как в поиске.</p>
           <div className="cmp-scroll mt-s">
             <table className="cmp">
               {head("Пожелание")}

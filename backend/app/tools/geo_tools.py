@@ -69,7 +69,7 @@ def sea_view(ctx, params) -> ToolResult:
     conf, factors = _view_confidence(ctx)
     return ToolResult(_strip(v), v["summary"], conf, "geo", _source_detail(ctx),
                       evidence={"confidence_factors": factors, "floors_checked": v["floors_checked"],
-                                "method": "line-of-sight, шаг 1°, окно ±60° от нормали фасада, кривизна Земли и рефракция"})
+                                "method": "прямая видимость по лучам через 1°, окно ±60° от нормали фасада, кривизна Земли и рефракция"})
 
 
 @tool("geo.sunset_view", "Закат из окон по месяцам", AGENT, ["Copernicus DEM", "OSM здания", "NOAA Solar Calculator"],
@@ -184,7 +184,7 @@ def walk_beach(ctx, params) -> ToolResult:
         parts.append(_beach_text(value["beach"]["name"], surface_ru))
     conf = 0.86 if start_d < 60 else 0.66
     return ToolResult(value, "; ".join(parts), conf, "geo", detail,
-                      evidence={"start_offset_m": round(start_d), "algorithm": "Дейкстра по времени, Тоблер: v = 6·exp(−3.5·|s+0.05|) км/ч"})
+                      evidence={"start_offset_m": round(start_d), "algorithm": "кратчайший по времени путь (Дейкстра), скорость по Тоблеру: v = 6·exp(−3,5·|s + 0,05|) км/ч"})
 
 
 @tool("geo.walk_center", "Пеший маршрут до центра", AGENT, ["OSM пешеходный граф", "Copernicus DEM"],

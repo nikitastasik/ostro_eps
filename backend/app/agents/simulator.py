@@ -16,8 +16,12 @@ import random
 from sqlalchemy.orm import Session
 
 from .. import llm
+from ..geo.proj import COMPASS_8, COMPASS_8_LONG
 from ..models import Hotel, Question, ResolvedValue
 from ..tools.base import plural
+
+# «окна на запад»: отельер называет сторону словом, а не сокращением фасада
+FACADE_DIR = dict(zip(COMPASS_8, COMPASS_8_LONG))
 
 
 def _rng(hotel_id: str, salt: str) -> random.Random:
@@ -122,8 +126,11 @@ def rule_answer(session: Session, hotel: Hotel, key: str, question: Question) ->
         parts = []
         if best:
             mf = sea.get("min_floor") or 2
-            parts.append(f"Делюкс с видом на море — окна на {best}, {mf}-{max(mf, (hotel.building or {}).get('levels') or mf)} этажи")
-        parts.append(f"Стандарт — во двор{(' (сторона ' + quiet + ')') if quiet else ''}")
+            top = max(mf, (hotel.building or {}).get("levels") or mf)
+            floors = f"{mf}–{top} этажи" if top > mf else f"с {mf} этажа"
+            parts.append(f"Делюкс с видом на море — окна на {FACADE_DIR.get(best, best)}, {floors}")
+        side = f" (окна на {FACADE_DIR.get(quiet, quiet)})" if quiet and quiet != best else ""
+        parts.append(f"Стандарт — во двор{side}")
         parts.append("Семейный — на улицу")
         return "; ".join(parts) + "."
     if key in {"sea_view", "sunset_view", "mountain_view"}:
@@ -136,7 +143,7 @@ def rule_answer(session: Session, hotel: Hotel, key: str, question: Question) ->
             return _pick(r, f"Конечно, {noun} видно из всех номеров!", f"Да, из всех номеров отличный вид на {noun}.")
         if not v.get("available"):
             return f"Нет, {noun} из номеров не видно."
-        return f"Да, {noun} видно начиная с {v.get('min_floor') or 2} этажа, окна на {v.get('best_facade') or 'море'}."
+        return f"Да, {noun} видно начиная с {v.get('min_floor') or 2} этажа, окна на {FACADE_DIR.get(v.get('best_facade'), 'море')}."
     if key == "construction_nearby":
         return "Рядом стройки нет." if r.random() < 0.7 else "Да, через дорогу строят жилой дом, днём бывает шумно."
     return _pick(r, "Да, есть.", "Нет, такого нет.", "Да.")

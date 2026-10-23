@@ -367,7 +367,7 @@ def evaluate_hotel(h: Hotel, specs: dict, groups: dict[str, list[Criterion]], rv
         if fv is not None and best_facade:
             text = facade_text(k, fv, best_facade, month)
             if status == "conditional":
-                text += f" — {_pct(share_k[k])} номеров"
+                text += f"; подходит {_pct(share_k[k])} номеров"
             if floor and floor > 1 and k != "quietness" and status in {"match", "conditional", "partial"}:
                 floors_needed.append(floor)
         else:
@@ -517,7 +517,7 @@ def search(session: Session, text: str, criteria_override: list[dict] | None = N
     if log:
         session.add(SearchLog(query=text, parsed=pq.as_dict(), parser=pq.parser,
                               top_hotels=[r["hotel"]["id"] for r in top[:10]]))
-    return {"query": parsed, "results": top, "total": len(results),
+    return {"query": parsed, "results": top, "total": len(hotels),
             "criteria_keys": keys, "llm": llm.enabled()}
 
 

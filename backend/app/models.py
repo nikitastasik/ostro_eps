@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import re
 
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -40,9 +41,10 @@ class Hotel(Base):
 
     @property
     def label(self) -> str:
-        """Отображаемое имя: корпус комплекса или подпись тёзки («Grand Way · Северная ул.»)."""
+        """Отображаемое имя: корпус комплекса или подпись тёзки («Grand Way · Северная ул.»); "кавычки" из OSM — «ёлочки»."""
+        name = re.sub(r'"([^"]*)"', r"«\1»", self.name)
         extra = (self.building or {}).get("corpus") or self.district
-        return f"{self.name} · {extra}" if extra else self.name
+        return f"{name} · {extra}" if extra else name
 
 
 class Characteristic(Base):
