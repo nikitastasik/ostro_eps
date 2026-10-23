@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api, Criterion, Meta, SearchResponse, SearchResult } from "../api";
 import MapView from "../MapView";
-import { Confidence, ErrorBox, Icon, KIND_RU, plural, ScoreRing, scoreColor, Sources, Spinner, useCompare } from "../ui";
+import { ErrorBox, Icon, KIND_RU, NeedsList, plural, ScoreRing, scoreColor, Spinner, useCompare } from "../ui";
 
 const OP_RU: Record<string, string> = { le: "≤", ge: "≥", lt: "<", gt: ">", eq: "=", ne: "≠", in: "∈", contains: "∋", nonempty: "" };
 const MONTHS_PREP = ["январе", "феврале", "марте", "апреле", "мае", "июне", "июле", "августе", "сентябре", "октябре", "ноябре", "декабре"];
@@ -38,7 +38,8 @@ function critText(crits: Crit[]) {
   return `${c.label}${details.length ? `: ${details.join(", ")}` : ""}${month}`;
 }
 
-function ResultCard({ r, rank, hl, onHover }: { r: SearchResult; rank: number; hl: boolean; onHover: (id: string | null) => void }) {
+function ResultCard({ r, rank, hl, onHover, q }: { r: SearchResult; rank: number; hl: boolean; onHover: (id: string | null) => void; q: string }) {
+  const href = (id: string) => `/hotel/${encodeURIComponent(id)}${q ? `?q=${encodeURIComponent(q)}` : ""}`;
   const cmp = useCompare();
   const h = r.hotel;
   return (
@@ -50,12 +51,12 @@ function ResultCard({ r, rank, hl, onHover }: { r: SearchResult; rank: number; h
       <div>
         <div className="row between" style={{ alignItems: "flex-start" }}>
           <div>
-            <h3 style={{ marginBottom: 2 }}><Link to={`/hotel/${encodeURIComponent(h.id)}`}>{h.name}</Link></h3>
+            <h3 style={{ marginBottom: 2 }}><Link to={href(h.id)}>{h.name}</Link></h3>
             <div className="small muted">{KIND_RU[h.kind] || h.kind}{h.stars ? ` · ${"★".repeat(h.stars)}` : ""}{h.address ? ` · ${h.address}` : ""}{h.levels ? ` · ${h.levels} эт.` : ""}</div>
             {(r.others || []).length > 0 && (
               <div className="tiny mt-s">
                 ещё {r.others!.length} {plural(r.others!.length, "корпус", "корпуса", "корпусов")} комплекса:{" "}
-                {r.others!.map((o, i) => <span key={o.id}>{i > 0 && ", "}<Link to={`/hotel/${encodeURIComponent(o.id)}`}>{o.corpus || o.name}</Link> <span className="muted">({o.score})</span></span>)}
+                {r.others!.map((o, i) => <span key={o.id}>{i > 0 && ", "}<Link to={href(o.id)}>{o.corpus || o.name}</Link> <span className="muted">({o.score})</span></span>)}
               </div>
             )}
           </div>
@@ -63,23 +64,19 @@ function ResultCard({ r, rank, hl, onHover }: { r: SearchResult; rank: number; h
             <button className={`btn small ${cmp.has(h.id) ? "primary" : ""}`} onClick={() => cmp.toggle(h.id, h.name)}>
               {cmp.has(h.id) ? "В сравнении" : "Сравнить"}
             </button>
-            <Link className="btn small" to={`/hotel/${encodeURIComponent(h.id)}`}>Подробнее</Link>
+            <Link className="btn small" to={href(h.id)}>Подробнее</Link>
           </div>
         </div>
-        {r.room && <div className="room"><Icon name="compass" size={15} /> <b>Совет агента:</b> {r.room.text}</div>}
-        <div className="needs">
-          {r.needs.map((n) => (
-            <div className="need" key={n.key}>
-              <span className={`ic ${n.status}`}>{n.status === "match" ? "✓" : n.status === "partial" ? "~" : n.status === "miss" ? "✕" : "?"}</span>
-              <div><b>{n.title}:</b> <span className={n.status === "unknown" ? "muted" : ""}>{n.text || "—"}</span></div>
-              <div className="row" style={{ gap: 6 }}>
-                <Sources sources={n.sources} />
-                {n.status !== "unknown" && <Confidence value={n.confidence} label={false} />}
-              </div>
-            </div>
-          ))}
-        </div>
+        {r.room && (
+          <div className="room">
+            <Icon name="compass" size={15} /> <b>Совет агента:</b> {r.room.text}
+            {r.room.share_text && <div className="tiny muted">{r.room.share_text}</div>}
+          </div>
+        )}
+        <NeedsList needs={r.needs} />
+        {r.verdict && <div className="small muted mt-s">{r.verdict}</div>}
         {r.excluded && <div className="small" style={{ color: "var(--bad)", marginTop: 6 }}>Не выполнено обязательное условие</div>}
+        {r.why_above && <div className="why" title="Чем этот отель лучше следующего в выдаче">↑ Выше следующего: {r.why_above}</div>}
       </div>
     </div>
   );
@@ -179,7 +176,7 @@ export default function SearchPage({ meta }: { meta: Meta | null }) {
         <div className="layout-search">
           <div>
             {results.slice(0, 20).map((r, i) => (
-              <ResultCard key={r.hotel.id} r={r} rank={i + 1} hl={hl === r.hotel.id} onHover={setHl} />
+              <ResultCard key={r.hotel.id} r={r} rank={i + 1} hl={hl === r.hotel.id} onHover={setHl} q={res.query.text} />
             ))}
             {results.length === 0 && <div className="card empty">Ничего не нашлось — попробуйте убрать одно из условий.</div>}
           </div>

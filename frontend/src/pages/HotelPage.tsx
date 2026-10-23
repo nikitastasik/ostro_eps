@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { api, CharValue, Fact, GeoData, HotelCard, Run } from "../api";
 import MapView from "../MapView";
 import Panorama from "../Panorama";
 import RunLog, { RunDrawer } from "../RunLog";
-import { Confidence, ErrorBox, fmtDate, Icon, KIND_RU, plural, Sources, Spinner, StatusBadge, useAsync, useCompare, useToast } from "../ui";
+import { Confidence, ErrorBox, fmtDate, Icon, KIND_RU, NeedsList, plural, Sources, Spinner, StatusBadge, useAsync, useCompare, useToast } from "../ui";
 
 function noiseColor(db?: number) {
   if (db == null) return "#9aa6b8";
@@ -118,6 +118,9 @@ export default function HotelPage() {
   const { id = "" } = useParams();
   const card = useAsync<HotelCard>(() => api.hotel(id), [id]);
   const geo = useAsync<GeoData>(() => api.geo(id), [id]);
+  const [params] = useSearchParams();
+  const q = params.get("q") || "";
+  const fit = useAsync(() => (q ? api.fit(id, q) : Promise.resolve(null)), [id, q]);
   const [runId, setRunId] = useState<number | null>(null);
   const [openRun, setOpenRun] = useState<number | null>(null);
   const cmp = useCompare();
@@ -185,12 +188,30 @@ export default function HotelPage() {
         </div>
       </div>
 
+      {fit.data && (
+        <div className="card mt fit-card">
+          <div className="row between wrap">
+            <h2 style={{ margin: 0 }}>Под ваш запрос</h2>
+            <span className="small muted">«{q}» · <Link to={`/?q=${encodeURIComponent(q)}`}>к выдаче</Link></span>
+          </div>
+          {fit.data.result.room && (
+            <div className="room">
+              <Icon name="compass" size={15} /> <b>Совет агента:</b> {fit.data.result.room.text}
+              {fit.data.result.room.share_text && <div className="tiny muted">{fit.data.result.room.share_text}</div>}
+            </div>
+          )}
+          <NeedsList needs={fit.data.result.needs} />
+          {fit.data.result.verdict && <div className="small muted mt-s">{fit.data.result.verdict}</div>}
+        </div>
+      )}
+
       <div className="layout-hotel">
         <div className="groups">
           <div className="card">
             <h2>Что видно из окна</h2>
             <p className="small muted">Профиль горизонта для выбранной стороны здания и этажа: рельеф, дома, деревья и море по лучам с шагом 1°. Линии — путь Солнца перед закатом 15-го числа каждого месяца; сплошная — закат виден из этого окна.</p>
-            <Panorama hotelId={h.id} initialFacade={bestFacade} />
+            <Panorama key={fit.data?.result.room?.facade || "base"} hotelId={h.id}
+              initialFacade={fit.data?.result.room?.facade || bestFacade} initialFloor={fit.data?.result.room?.min_floor || undefined} />
           </div>
           {h.groups.map((grp) => (
             <div className="card" key={grp.key}>

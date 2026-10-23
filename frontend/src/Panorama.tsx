@@ -12,9 +12,9 @@ function diff(a: number, b: number) {
   return ((a - b + 540) % 360) - 180;
 }
 
-export default function Panorama({ hotelId, initialFacade }: { hotelId: string; initialFacade?: string }) {
+export default function Panorama({ hotelId, initialFacade, initialFloor }: { hotelId: string; initialFacade?: string; initialFloor?: number }) {
   const [facade, setFacade] = useState<string | undefined>(initialFacade);
-  const [floor, setFloor] = useState<number | undefined>(undefined);
+  const [floor, setFloor] = useState<number | undefined>(initialFloor);
   const [data, setData] = useState<ViewData | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [loading, setLoading] = useState(false);

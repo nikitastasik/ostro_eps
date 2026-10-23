@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { Need } from "./api";
 
 // ---------------------------------------------------------------- иконки (простые штриховые SVG)
 const PATHS: Record<string, string> = {
@@ -62,6 +63,41 @@ export function StatusBadge({ status }: { status: string }) {
 
 export function confColor(c: number) {
   return c >= 0.7 ? "#14a05a" : c >= 0.45 ? "#e38b00" : "#e0464b";
+}
+
+export const NEED_STATUS: Record<string, { icon: string; label: string }> = {
+  match: { icon: "✓", label: "подходит" },
+  conditional: { icon: "✓", label: "подходит с условием" },
+  partial: { icon: "~", label: "не дотягивает" },
+  miss: { icon: "✕", label: "не подходит" },
+  unknown: { icon: "?", label: "нет данных" },
+};
+
+/** Значок статуса пожелания: ✓ / ✓ с условием / ~ / ✕ / ?. */
+export function NeedIcon({ status }: { status: string }) {
+  const s = NEED_STATUS[status] || NEED_STATUS.unknown;
+  return <span className={`ic ${status}`} title={s.label}>{s.icon}</span>;
+}
+
+/** Пожелания гостя с итогом по каждому: значок статуса, объяснение, источники и уверенность. */
+export function NeedsList({ needs }: { needs: Need[] }) {
+  return (
+    <div className="needs">
+      {needs.map((n) => (
+        <div className="need" key={n.key}>
+          <NeedIcon status={n.status} />
+          <div>
+            <b>{n.title}:</b> <span className={n.status === "unknown" ? "muted" : ""}>{n.text || "—"}</span>
+            {n.status === "conditional" && <span className="cond-tag">с условием</span>}
+          </div>
+          <div className="row" style={{ gap: 6 }}>
+            <Sources sources={n.sources} />
+            {n.status !== "unknown" && <Confidence value={n.confidence} label={false} />}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function Confidence({ value, label = true }: { value: number; label?: boolean }) {

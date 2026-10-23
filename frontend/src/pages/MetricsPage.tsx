@@ -83,6 +83,23 @@ export default function MetricsPage() {
                   <div className="small muted mt-s">{d.eval.levels_imputation.dsm_check?.note}</div>
                 </>
               )}
+              {d.eval.ranking?.pairs > 0 && (
+                <>
+                  <h3 className="mt">Согласие ранжирования с разметкой</h3>
+                  <div className="small">
+                    {d.eval.ranking.pairs} {plural(d.eval.ranking.pairs, "пара", "пары", "пар")} «для запроса Q отель A должен стоять выше B», составленных по фактам до настройки:
+                    {" "}<b>{pct(d.eval.ranking.agreement, 1)}</b> пар в правильном порядке.
+                  </div>
+                  {d.eval.ranking.errors?.length > 0 && (
+                    <details className="mt-s">
+                      <summary className="small muted">Ошибки ({d.eval.ranking.errors.length})</summary>
+                      {d.eval.ranking.errors.map((e: any, i: number) => (
+                        <div key={i} className="tiny mono mt-s">«{e.query}»: {e.above} — {e.pos_above}-е место, {e.below} — {e.pos_below}-е</div>
+                      ))}
+                    </details>
+                  )}
+                </>
+              )}
               <h3 className="mt">Геохарактеристики против ручной разметки</h3>
               {d.eval.geo_gold?.labels ? (
                 <div className="small">{d.eval.geo_gold.labels} {plural(d.eval.geo_gold.labels, "отель", "отеля", "отелей")}, {d.eval.geo_gold.fields} {plural(d.eval.geo_gold.fields, "поле", "поля", "полей")} · точность <b>{pct(d.eval.geo_gold.accuracy, 1)}</b></div>

@@ -188,6 +188,9 @@ table.t tr:hover td { background: #fbfcfe; }
 .need .ic { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 800; color: white; margin-top: 1px; }
 .need .ic.match { background: var(--good); }
 .need .ic.partial { background: var(--warn); }
+.ic.conditional { background: var(--teal); box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px var(--teal); }
+.cond-tag { display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 999px; font-size: 11.5px; font-weight: 650; color: #0b6f69; background: #dff5f2; vertical-align: 1px; }
+.why { margin-top: 6px; font-size: 12.5px; color: var(--muted); }
 .need .ic.miss { background: var(--bad); }
 .need .ic.unknown { background: #b5bfcd; }
 .need b { font-weight: 650; }

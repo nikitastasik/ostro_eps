@@ -163,8 +163,10 @@ export interface Criterion {
 export interface Need {
   key: string;
   title: string;
-  status: "match" | "partial" | "miss" | "unknown";
+  status: "match" | "conditional" | "partial" | "miss" | "unknown";
   match: number | null;
+  floor?: number | null;
+  share?: number | null;
   confidence: number;
   text: string;
   sources: string[];
@@ -175,10 +177,13 @@ export interface Need {
 export interface SearchResult {
   hotel: { id: string; name: string; kind: string; stars: number | null; lat: number; lon: number; address: string | null; levels: number | null; corpus?: string | null };
   others?: { id: string; name: string; corpus: string | null; score: number }[];
+  share?: number | null;
+  why_above?: string | null;
+  verdict?: string;
   score: number;
   excluded: boolean;
   needs: Need[];
-  room: { facade: string; facade_text: string; min_floor: number | null; category?: string; text: string } | null;
+  room: { facade: string; facade_text: string; min_floor: number | null; category?: string; text: string; share?: number; share_text?: string } | null;
   summary: string;
   caveats: number;
   known: number;
@@ -276,6 +281,8 @@ export const api = {
   facts: (id: string, key?: string) =>
     request<{ items: Fact[] }>(`/api/hotels/${encodeURIComponent(id)}/facts${key ? `?char_key=${key}` : ""}`),
   geo: (id: string) => request<GeoData>(`/api/hotels/${encodeURIComponent(id)}/geo`),
+  fit: (id: string, q: string) =>
+    request<{ query: SearchResponse["query"]; result: SearchResult }>(`/api/hotels/${encodeURIComponent(id)}/fit?q=${encodeURIComponent(q)}`),
   view: (id: string, facade?: string, floor?: number) =>
     request<ViewData>(
       `/api/hotels/${encodeURIComponent(id)}/view?${facade ? `facade=${encodeURIComponent(facade)}&` : ""}${floor ? `floor=${floor}` : ""}`,

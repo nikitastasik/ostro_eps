@@ -146,6 +146,34 @@ def eval_geo_gold(session: Session) -> dict:
             "errors": errors[:12], "note": "разметка заполняется командой по фото и панорамам" if not rows else ""}
 
 
+def eval_ranking(session: Session, name: str = "ranking_pairs.yaml") -> dict:
+    """Согласие ранжирования с разметкой: доля пар «для запроса Q отель A выше B», где так и вышло."""
+    from .agents.concierge import search
+
+    rows = _load(name) or []
+    if not rows:
+        return {"pairs": 0}
+    ok, errors, cache = 0, [], {}
+    names = {h.id: h.label for h in session.scalars(select(Hotel))}
+    for r in rows:
+        q = r["query"]
+        if q not in cache:
+            res = search(session, q, limit=10_000, log=False)
+            order = {}
+            for i, x in enumerate(res["results"]):
+                order[x["hotel"]["id"]] = i
+                for o in x.get("others") or []:  # свёрнутые корпуса комплекса стоят там же
+                    order[o["id"]] = i
+            cache[q] = order
+        pa, pb = cache[q].get(r["above"]), cache[q].get(r["below"])
+        good = pa is not None and pb is not None and pa < pb
+        ok += good
+        if not good:
+            errors.append({"query": q, "above": names.get(r["above"], r["above"]), "below": names.get(r["below"], r["below"]),
+                           "pos_above": None if pa is None else pa + 1, "pos_below": None if pb is None else pb + 1})
+    return {"pairs": len(rows), "agreement": round(ok / len(rows), 3), "errors": errors}
+
+
 def compute_metrics(session: Session, force: bool = False) -> dict:
     with _lock:
         if not force and _cache["data"] is not None and time.time() - _cache["at"] < 30:
@@ -215,7 +243,7 @@ def compute_metrics(session: Session, force: bool = False) -> dict:
                  "answers_dev": eval_answers("hotelier_answers_dev.yaml"), "queries_dev": eval_queries("queries_dev.yaml"),
                  "answers_holdout": eval_answers("hotelier_answers_holdout.yaml"),
                  "queries_holdout": eval_queries("queries_holdout.yaml"), "sun": eval_sun(),
-                 "geo_gold": eval_geo_gold(session),
+                 "geo_gold": eval_geo_gold(session), "ranking": eval_ranking(session),
                  "levels_imputation": region_stats.get("levels_imputation")},
         "data_sources": {"buildings": region_stats.get("buildings"), "height_sources": region_stats.get("height_sources"),
                          "pois": region_stats.get("pois"), "roads": region_stats.get("roads")},

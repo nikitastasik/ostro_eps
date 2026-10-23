@@ -218,6 +218,15 @@ def hotel_geo(hotel_id: str, session: Session = Depends(get_session)):
     return out
 
 
+@router.get("/api/hotels/{hotel_id}/fit")
+def hotel_fit(hotel_id: str, q: str, session: Session = Depends(get_session)):
+    """Как отель подходит под запрос: статусы пожеланий, совет по номеру, доля подходящих номеров."""
+    res = concierge.fit(session, hotel_id, q.strip())
+    if res is None:
+        raise HTTPException(404, "Отель не найден")
+    return res
+
+
 @router.get("/api/hotels/{hotel_id}/view")
 def hotel_view(hotel_id: str, facade: str | None = None, floor: int | None = None,
                session: Session = Depends(get_session)):
