@@ -62,7 +62,7 @@ function ResultCard({ r, rank, hl, onHover, q }: { r: SearchResult; rank: number
             )}
           </div>
           <div className="row">
-            <button className={`btn small ${cmp.has(h.id) ? "primary" : ""}`} onClick={() => cmp.toggle(h.id, h.name)}>
+            <button className={`btn small ${cmp.has(h.id) ? "primary" : ""}`} onClick={() => cmp.toggle(h.id, h.name, q)}>
               {cmp.has(h.id) ? "В сравнении" : "Сравнить"}
             </button>
             <Link className="btn small" to={href(h.id)}>Подробнее</Link>

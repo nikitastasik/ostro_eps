@@ -195,6 +195,18 @@ table.t tr:hover td { background: #fbfcfe; }
 .need .ic.unknown { background: #b5bfcd; }
 .need b { font-weight: 650; }
 
+/* ---------- сравнение ---------- */
+.cmp-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.cmp tr.clickable { cursor: pointer; }
+.cmp tr.total td { border-top: 2px solid var(--line); }
+.chip-val { display: inline-block; padding: 1px 8px; border-radius: 999px; background: #f2f5fa; font-size: 13.5px; }
+.fit-cell { display: inline-flex; align-items: center; gap: 6px; }
+.fit-cell .ic { width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 11px; font-weight: 800; color: #fff; }
+.fit-cell .ic.match { background: var(--good); }
+.fit-cell .ic.partial { background: var(--warn); }
+.fit-cell .ic.miss { background: var(--bad); }
+.fit-cell .ic.unknown { background: #b5bfcd; }
+
 /* ---------- окно пожелания ---------- */
 .modal-back { position: fixed; inset: 0; z-index: 2000; background: rgba(15, 25, 45, 0.45); display: grid; place-items: center; padding: 16px; }
 .modal { width: min(720px, 100%); max-height: calc(100vh - 32px); overflow: auto; }

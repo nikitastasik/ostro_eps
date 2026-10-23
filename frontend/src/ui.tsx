@@ -229,6 +229,26 @@ export function setCompare(items: { id: string; name: string }[]) {
   window.dispatchEvent(new Event("compare-changed"));
 }
 
+const CMP_Q_KEY = "ostrovok_compare_q";
+
+/** Запрос, из выдачи которого добавляли отели в сравнение: сравнение начинается с блока «Под ваш запрос». */
+export function getCompareQuery(): string {
+  try {
+    return localStorage.getItem(CMP_Q_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function setCompareQuery(q: string) {
+  try {
+    if (q) localStorage.setItem(CMP_Q_KEY, q);
+    else localStorage.removeItem(CMP_Q_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function useCompare() {
   const [items, setItems] = useState(getCompare());
   useEffect(() => {
@@ -236,10 +256,15 @@ export function useCompare() {
     window.addEventListener("compare-changed", h);
     return () => window.removeEventListener("compare-changed", h);
   }, []);
-  const toggle = (id: string, name: string) => {
+  const toggle = (id: string, name: string, q?: string) => {
     const cur = getCompare();
+    if (q !== undefined) setCompareQuery(q);
     if (cur.find((x) => x.id === id)) setCompare(cur.filter((x) => x.id !== id));
     else setCompare([...cur, { id, name }]);
   };
-  return { items, toggle, has: (id: string) => !!items.find((x) => x.id === id), clear: () => setCompare([]) };
+  const clear = () => {
+    setCompareQuery("");
+    setCompare([]);
+  };
+  return { items, toggle, has: (id: string) => !!items.find((x) => x.id === id), clear, query: getCompareQuery() };
 }

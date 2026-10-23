@@ -17,7 +17,8 @@ function CompareBar() {
   return (
     <div className="cmp-bar">
       <span className="small">Сравнение: {cmp.items.map((x) => x.name).join(", ").slice(0, 70)}</span>
-      <button className="btn small primary" disabled={cmp.items.length < 2} onClick={() => nav(`/compare?ids=${cmp.items.map((x) => x.id).join(",")}`)}>
+      <button className="btn small primary" disabled={cmp.items.length < 2}
+        onClick={() => nav(`/compare?ids=${cmp.items.map((x) => x.id).join(",")}${cmp.query ? `&q=${encodeURIComponent(cmp.query)}` : ""}`)}>
         Сравнить ({cmp.items.length})
       </button>
       <button className="btn small" onClick={cmp.clear}>Очистить</button>

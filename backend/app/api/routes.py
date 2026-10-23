@@ -363,11 +363,11 @@ def do_search(body: SearchBody, session: Session = Depends(get_session)):
 
 
 @router.get("/api/compare")
-def do_compare(ids: str, session: Session = Depends(get_session)):
+def do_compare(ids: str, q: str = "", session: Session = Depends(get_session)):
     hotel_ids = [i for i in ids.split(",") if i][:5]
     if len(hotel_ids) < 2:
         raise HTTPException(400, "Выберите хотя бы два отеля")
-    return concierge.compare(session, hotel_ids)
+    return concierge.compare(session, hotel_ids, q.strip() or None)
 
 
 # =============================================================== характеристики

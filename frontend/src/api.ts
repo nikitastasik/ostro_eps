@@ -313,7 +313,8 @@ export const api = {
   run: (id: number, after = -1) => request<Run>(`/api/runs/${id}?after=${after}`),
   search: (query: string, criteria?: Criterion[]) =>
     request<SearchResponse>("/api/search", { method: "POST", body: JSON.stringify({ query, criteria }) }),
-  compare: (ids: string[]) => request<any>(`/api/compare?ids=${ids.map(encodeURIComponent).join(",")}`),
+  compare: (ids: string[], q = "") =>
+    request<any>(`/api/compare?ids=${ids.map(encodeURIComponent).join(",")}${q ? `&q=${encodeURIComponent(q)}` : ""}`),
   characteristics: () => request<{ items: any[]; groups: any[] }>("/api/characteristics"),
   compile: (text: string) => request<{ spec: any; method: string; errors: string[] }>("/api/characteristics/compile", { method: "POST", body: JSON.stringify({ text }) }),
   createChar: (text: string, spec?: any) => request<{ spec: any; method: string; run: Run }>("/api/characteristics", { method: "POST", body: JSON.stringify({ text, spec }) }),

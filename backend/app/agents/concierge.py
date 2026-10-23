@@ -19,7 +19,7 @@ from ..geo.analysis import facade_acc, facade_gen, month_ranges
 from ..knowledge.registry import all_specs
 from ..models import Hotel, Question, ResolvedValue, SearchLog
 from ..nlp.query_parser import Criterion, ParsedQuery, criteria_from_dicts, parse_query
-from ..nlp.ru import dec, walk_min_text, walk_to_text
+from ..nlp.ru import dec, dist_text, walk_min_text, walk_to_text
 
 PRIOR = 0.3  # ожидание совпадения, когда данных нет
 MONTHS_PREP = ["январе", "феврале", "марте", "апреле", "мае", "июне", "июле", "августе", "сентябре", "октябре",
@@ -541,7 +541,8 @@ def hotel_brief(h: Hotel) -> dict:
             "address": h.address, "levels": b.get("levels"), "website": h.website}
 
 
-def compare(session: Session, hotel_ids: list[str]) -> dict:
+def compare(session: Session, hotel_ids: list[str], text: str | None = None) -> dict:
+    """Сравнение отелей: все характеристики с короткими значениями; с запросом — первым блок «Под ваш запрос»."""
     specs = all_specs(session)
     hotels = [session.get(Hotel, i) for i in hotel_ids]
     hotels = [h for h in hotels if h is not None]
@@ -553,7 +554,7 @@ def compare(session: Session, hotel_ids: list[str]) -> dict:
         cells = []
         for h in hotels:
             rv = session.get(ResolvedValue, (h.id, key))
-            cells.append({"summary": rv.summary if rv else "", "confidence": rv.confidence if rv else 0.0,
+            cells.append({"summary": rv.summary if rv else "", "short": short_value(key, rv), "confidence": rv.confidence if rv else 0.0,
                           "status": rv.status if rv else "unknown", "sources": rv.sources if rv else [],
                           "score": _cell_score(key, rv)})
         if all(not c["summary"] for c in cells):
@@ -562,8 +563,95 @@ def compare(session: Session, hotel_ids: list[str]) -> dict:
         best = max(scores) if scores else None
         for c in cells:
             c["best"] = best is not None and c["score"] == best and len(scores) > 1 and len(set(scores)) > 1
-        rows.append({"key": key, "title": spec["title"], "group": spec["group"], "cells": cells})
-    return {"hotels": [hotel_brief(h) for h in hotels], "rows": rows}
+        rows.append({"key": key, "title": spec["title"], "group": spec["group"], "cells": cells,
+                     "same": len({c["short"] for c in cells}) <= 1})
+    out = {"hotels": [hotel_brief(h) for h in hotels], "rows": rows, "query": None, "fit_rows": [], "fit": []}
+    if text:
+        pq = understand(text, specs)
+        groups = _group(pq.criteria)
+        keys = list(groups)
+        rvs = {(rv.hotel_id, rv.char_key): rv for rv in session.scalars(select(ResolvedValue).where(
+            ResolvedValue.hotel_id.in_([h.id for h in hotels]),
+            ResolvedValue.char_key.in_(keys + ["room_orientation", "building_levels", "beach_access"])))}
+        month = next((c.month for c in pq.criteria if c.month), None)
+        evals = [evaluate_hotel(h, specs, groups, rvs, {}, month) for h in hotels]
+        for k in keys:
+            needs = [next(n for n in e["needs"] if n["key"] == k) for e in evals]
+            contribs = [n["contrib"] for n in needs]
+            top = max(contribs)
+            winner = contribs.index(top) if contribs.count(top) == 1 and len(set(contribs)) > 1 else None
+            out["fit_rows"].append({
+                "key": k, "title": specs[k]["title"], "label": groups[k][0].label, "winner": winner,
+                "cells": [{"status": n["status"], "short": _need_short(k, n, rvs.get((h.id, k))), "text": n["text"],
+                           "confidence": n["confidence"], "sources": n["sources"]} for h, n in zip(hotels, needs)]})
+        scores = [e["score"] for e in evals]
+        best = max(scores)
+        out["fit"] = [{"score": e["score"], "best": e["score"] == best and scores.count(best) == 1,
+                       "room": e["room"], "share": e["share"], "verdict": _summary(e["needs"], None)} for e in evals]
+        out["query"] = pq.as_dict()
+    return out
+
+
+def _need_short(key: str, need: dict, rv: ResolvedValue | None) -> str:
+    """Короткое значение пожелания для клетки сравнения: этаж и доля номеров — для «фасадных»."""
+    if need["status"] == "unknown":
+        return "нет данных"
+    if key in NOUN and need.get("floor") and key != "quietness":
+        s = f"{NOUN[key]} с {need['floor']} эт."
+        return s + (f", {_pct(need['share'])} номеров" if need.get("share") is not None else "")
+    if key == "quietness" and need.get("db") is not None:
+        return f"{need['db']:.0f} дБ ночью" + (f", {_pct(need['share'])} номеров" if need.get("share") is not None else "")
+    return short_value(key, rv) or need["text"][:40]
+
+
+def short_value(key: str, rv: ResolvedValue | None) -> str:
+    """Короткое значение-чип для сравнения: «закат с 4 эт.», «2 мин до пляжа», «41 дБ ночью»."""
+    if rv is None or not rv.value:
+        return "нет данных" if rv is None or rv.status in {"unknown", "asked"} else (rv.summary or "")[:40]
+    v = rv.value
+    try:
+        if key in {"sea_view", "sunset_view", "mountain_view"}:
+            noun = NOUN[key]
+            return f"{noun} с {v.get('min_floor') or 1} эт." if v.get("available") else f"{noun} не видно" \
+                if key != "mountain_view" else "гор не видно"
+        if key == "landmark_view":
+            names = [x["name"] for x in v.get("landmarks") or []]
+            return f"видно: {names[0]}" if names else "ориентиров не видно"
+        if key == "window_outlook":
+            return "открытый вид" if v.get("open_view") else f"стена в {v.get('min_wall_m')} м"
+        if key == "quietness":
+            return f"{v['night_db']:.0f} дБ ночью"
+        if key == "nightlife":
+            return {"lively": "оживлённо", "moderate": "умеренно", "calm": "спокойно"}.get(v.get("level"), "")
+        if key == "construction_nearby":
+            return f"стройка в {dist_text(v['nearest_m'])}" if v.get("nearest_m") else "строек нет"
+        if key in {"beach_access", "center_access"}:
+            place = "до пляжа" if key == "beach_access" else "до центра"
+            if key == "beach_access" and v.get("walk_m") is not None and v["walk_m"] < 40:
+                return "у пляжа"
+            return f"{walk_min_text(v['minutes_to'], '')} {place}"
+        if key == "night_services":
+            return "аптека ночью рядом" if v.get("available") else "ночью рядом ничего"
+        if key == "transport" and v.get("bus_stop_m") is not None:
+            return "остановка у отеля" if v["bus_stop_m"] < 40 else f"остановка в {dist_text(v['bus_stop_m'])}"
+        if key == "families":
+            return f"площадок в 400 м: {v.get('playgrounds_400m', 0)}"
+        if key == "pets_walk":
+            return f"парк в {dist_text(v['park_m'])}" if v.get("park_m") is not None else "парка рядом нет"
+        if key == "building_levels":
+            return f"{v['levels']} эт."
+        if key == "building_history":
+            return f"{v['year_built']} г." if v.get("year_built") else (rv.summary or "")[:40]
+        if key == "pets_policy":
+            return "с животными можно" if v.get("allowed") else "без животных"
+        if key == "elevator":
+            return "лифт есть" if v.get("available") else "лифта нет"
+        if key == "blackout_curtains":
+            return "шторы есть" if v.get("available") else "штор нет"
+    except (KeyError, TypeError, ValueError):
+        pass
+    s = (rv.summary or "").replace("Со слов отельера: ", "").split(";")[0]
+    return s if len(s) <= 42 else s[:40].rstrip() + "…"
 
 
 def _cell_score(key: str, rv: ResolvedValue | None) -> float | None:

@@ -165,3 +165,16 @@ def test_booking_wish(client):
                    if any(n["key"] == "blackout_curtains" and n["status"] == "unknown" for n in r["needs"]))
     w2 = client.get(f"/api/hotels/{unknown['hotel']['id']}/wish", params={"q": q2}).json()
     assert any("шторы" in x for x in w2["questions"]) and "?" in w2["text"]
+
+
+def test_compare_under_query(client):
+    """Сравнение из выдачи: первым — строки по пожеланиям запроса со статусами и победителем."""
+    q = "тихий номер с видом на закат недалеко от моря"
+    ids = [x["hotel"]["id"] for x in client.post("/api/search", json={"query": q, "limit": 3}).json()["results"]]
+    d = client.get("/api/compare", params={"ids": ",".join(ids), "q": q}).json()
+    assert {r["key"] for r in d["fit_rows"]} == {"quietness", "sunset_view", "beach_access"}
+    assert all(c["status"] in {"match", "conditional", "partial", "miss", "unknown"} for r in d["fit_rows"] for c in r["cells"])
+    assert len(d["fit"]) == 3 and all(f["room"] for f in d["fit"])
+    assert all(c["short"] and len(c["short"]) <= 60 for r in d["rows"] for c in r["cells"])
+    plain = client.get("/api/compare", params={"ids": ",".join(ids)}).json()
+    assert plain["fit_rows"] == [] and plain["rows"]
