@@ -135,6 +135,7 @@ export default function SearchPage({ meta }: { meta: Meta | null }) {
           <input value={text} onChange={(e) => setText(e.target.value)} placeholder="например: тихий номер с видом на закат недалеко от моря" autoFocus />
           <button className="btn primary" type="submit" disabled={loading}>{loading ? <Spinner /> : <Icon name="search" />} Найти</button>
         </form>
+        <Link to="/tour" className="hero-tour"><Icon name="check" size={15} /> Демо-тур: проверить решение за 5 минут</Link>
         <div className="examples">
           {(meta?.examples || []).map((ex) => (
             <button key={ex} onClick={() => { setText(ex); run(ex); }}>{ex}</button>

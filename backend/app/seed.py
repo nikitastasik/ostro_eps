@@ -157,6 +157,24 @@ def log_dedup(session: Session) -> AgentRun | None:
     return run
 
 
+def reset_demo(session: Session) -> dict:
+    """Вернуть демо в исходное состояние без пересоздания таблиц: удалить знания и сценарии, загрузить сид."""
+    from sqlalchemy import delete
+
+    from .models import GeoOverride
+
+    for model in (AgentStep, Conflict, Change, Question, Fact, ResolvedValue, AgentRun, SearchLog, GeoOverride):
+        session.execute(delete(model))
+    session.execute(delete(Characteristic).where(Characteristic.origin == "custom"))
+    session.flush()
+    seed_path = settings.data_dir / "seed" / "seed.json.gz"
+    counts = load_seed(session, seed_path) if seed_path.exists() else {}
+    log_dedup(session)
+    sync_builtin(session)
+    invalidate()
+    return counts
+
+
 def bootstrap(session: Session) -> str:
     sync_builtin(session)
     n_hotels = session.scalar(select(func.count(Hotel.id))) or 0

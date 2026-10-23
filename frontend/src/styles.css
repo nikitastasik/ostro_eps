@@ -82,6 +82,8 @@ input, textarea, select { font-family: inherit; font-size: 15px; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
 .mono, .small, .tiny { overflow-wrap: anywhere; }
 .nowrap { white-space: nowrap; }
+/* якоря (#view, #char-…, #scenario, вопросы) не прячутся под липкой шапкой */
+[id] { scroll-margin-top: 76px; }
 .hr { height: 1px; background: var(--line); margin: 14px 0; }
 .mt { margin-top: 14px; }
 .mt-s { margin-top: 8px; }
@@ -208,6 +210,20 @@ table.t tr:hover td { background: #fbfcfe; }
 .fit-cell .ic.miss { background: var(--bad); }
 .fit-cell .ic.unknown { background: #b5bfcd; }
 
+/* ---------- демо-тур ---------- */
+.nav a.nav-tour { background: var(--accent); color: #fff; }
+.nav a.nav-tour:hover, .nav a.nav-tour.active { background: #0857cc; color: #fff; }
+.hero-tour { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; padding: 8px 14px; border-radius: 10px; background: #fff; color: var(--accent); font-weight: 650; font-size: 14px; }
+.hero-tour:hover { text-decoration: none; background: #eef5ff; }
+.tour-step { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 14px; align-items: start; }
+.tour-step + .tour-step { margin-top: 12px; }
+.tour-n { width: 36px; height: 36px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-weight: 800; display: grid; place-items: center; }
+.tour-actions { gap: 8px; align-items: stretch; }
+@media (max-width: 700px) {
+  .tour-step { grid-template-columns: 36px minmax(0, 1fr); }
+  .tour-actions { grid-column: 1 / -1; }
+}
+
 /* ---------- польза вопросов ---------- */
 .utility { margin-top: 6px; color: #0b6f69; }
 .boosts { padding: 12px 14px; border-radius: 12px; background: #f1fbf9; border: 1px solid #cdeee8; }
@@ -300,15 +316,27 @@ table.cmp tr.group td { background: #f4f6fa; font-weight: 700; color: var(--mute
 .brand > span { min-width: 0; }
 .brand small { overflow: hidden; text-overflow: ellipsis; }
 
-@media (max-width: 1100px) {
-  .layout-search, .layout-hotel, .layout-hotelier { grid-template-columns: minmax(0, 1fr); }
-  .layout-search > *, .layout-hotel > *, .layout-hotelier > *, .groups > * { min-width: 0; }
-  .input, input, select, textarea { max-width: 100%; }
-  /* шапка: бренд и переключатель LLM в первой строке, навигация — прокручиваемой строкой ниже */
+/* шапка в одну строку на ноутбуках: подпись бренда короче, у переключателя LLM — только значок (текст во всплывающей подсказке) */
+@media (max-width: 1520px) {
+  .topbar { gap: 14px; }
+  .brand small { max-width: 240px; white-space: nowrap; }
+  .topbar .llm-text { display: none; }
+  .nav a { padding: 7px 8px; }
+}
+/* уже: бренд и переключатель LLM в первой строке, навигация — прокручиваемой строкой ниже */
+@media (max-width: 1279px) {
   .topbar { flex-wrap: wrap; row-gap: 4px; }
   .nav { order: 3; width: 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -4px; }
   .nav::-webkit-scrollbar { display: none; }
   .nav a { white-space: nowrap; }
+  .brand small { max-width: none; }
+  .topbar .llm-text { display: inline; }
+  [id] { scroll-margin-top: 112px; }
+}
+@media (max-width: 1100px) {
+  .layout-search, .layout-hotel, .layout-hotelier { grid-template-columns: minmax(0, 1fr); }
+  .layout-search > *, .layout-hotel > *, .layout-hotelier > *, .groups > * { min-width: 0; }
+  .input, input, select, textarea { max-width: 100%; }
   .sticky { position: static; }
   .grid.four { grid-template-columns: repeat(2, 1fr); }
   .grid.three { grid-template-columns: 1fr 1fr; }
@@ -317,7 +345,8 @@ table.cmp tr.group td { background: #f4f6fa; font-weight: 700; color: var(--mute
   .page { padding: 14px 16px 60px; }
   .topbar { padding: 8px 16px; }
   .brand small { max-width: 52vw; white-space: nowrap; }
-  .llm-text { display: none; }
+  .topbar .llm-text { display: none; }
+  .nav a.nav-tour { order: -1; }
   .row { flex-wrap: wrap; }
   .hero { padding: 20px 18px; }
   .searchbox { flex-direction: column; align-items: stretch; }

@@ -8,6 +8,7 @@ import HotelPage from "./pages/HotelPage";
 import HotelsPage from "./pages/HotelsPage";
 import MetricsPage from "./pages/MetricsPage";
 import SearchPage from "./pages/SearchPage";
+import TourPage from "./pages/TourPage";
 import { Icon, plural, useAsync, useCompare } from "./ui";
 
 function CompareBar() {
@@ -44,6 +45,7 @@ export default function App() {
           <NavLink to="/agents">Агенты</NavLink>
           <NavLink to="/characteristics">Характеристики</NavLink>
           <NavLink to="/metrics">Метрики</NavLink>
+          <NavLink to="/tour" className="nav-tour">Проверить за 5 минут</NavLink>
         </nav>
         <div className="spacer" />
         {m && (
@@ -61,6 +63,7 @@ export default function App() {
         <Route path="/agents" element={<AgentsPage />} />
         <Route path="/characteristics" element={<CharacteristicsPage />} />
         <Route path="/metrics" element={<MetricsPage />} />
+        <Route path="/tour" element={<TourPage />} />
         <Route path="*" element={<div className="page"><div className="empty">Страница не найдена</div></div>} />
       </Routes>
       <CompareBar />

@@ -100,6 +100,21 @@ def collect_hotel(session: Session, hotel: Hotel, keys: list[str] | None, logger
     return stats
 
 
+# Сброс демо (/api/demo/reset) и обработка запусков воркером не пересекаются: сброс просит длинный запуск
+# остановиться на следующем отеле и ждёт, пока воркер отпустит замок
+DEMO_LOCK = threading.RLock()
+STOP_RUNS = threading.Event()
+
+
+class Stopped(Exception):
+    pass
+
+
+def _check_stop() -> None:
+    if STOP_RUNS.is_set():
+        raise Stopped("запуск остановлен сбросом демо")
+
+
 def _run_collect(session: Session, run: AgentRun, logger: RunLogger) -> str:
     hotel = session.get(Hotel, run.hotel_id)
     if hotel is None:
@@ -115,6 +130,7 @@ def _run_collect_all(session: Session, run: AgentRun, logger: RunLogger) -> str:
     total: dict[str, int] = {}
     t0 = time.perf_counter()
     for i, h in enumerate(hotels):
+        _check_stop()
         st = collect_hotel(session, h, keys, quiet, reason=run.trigger)
         for k, v in st.items():
             total[k] = total.get(k, 0) + v
@@ -157,6 +173,7 @@ def _run_actualize(session: Session, run: AgentRun, logger: RunLogger) -> str:
     limit = int(run.params.get("limit", 50))
     n = 0
     for hotel_id, keys in list(by_hotel.items())[:limit]:
+        _check_stop()
         hotel = session.get(Hotel, hotel_id)
         logger.step("Оркестратор", "plan", f"Перепроверяю {quote(hotel.label)}: {', '.join(keys)}", payload={"keys": keys})
         quiet = RunLogger(session, run, store=False)
@@ -199,6 +216,7 @@ def _run_scenario(session: Session, run: AgentRun, logger: RunLogger) -> str:
                 payload={"hotels": [h.id for _, h in hotels]})
     changed = 0
     for d, h in hotels:
+        _check_stop()
         before = {k: (session.get(ResolvedValue, (h.id, k)).summary if session.get(ResolvedValue, (h.id, k)) else "")
                   for k in VIEW_KEYS}
         quiet = RunLogger(session, run, store=False)
@@ -236,6 +254,12 @@ def execute_run(run_id: int) -> None:
             summary = HANDLERS[run.kind](session, run, logger)
             run.status = "done"
             run.summary = summary or ""
+        except Stopped as exc:
+            session.rollback()
+            run = session.get(AgentRun, run_id)
+            run.status = "error"
+            run.error = str(exc)
+            log.info("Запуск %s: %s", run_id, exc)
         except Exception as exc:  # noqa: BLE001
             session.rollback()
             run = session.get(AgentRun, run_id)
@@ -275,6 +299,10 @@ class Worker(threading.Thread):
             self.stop_event.wait(0.7)
 
     def tick(self) -> None:
+        with DEMO_LOCK:
+            self._tick()
+
+    def _tick(self) -> None:
         with SessionLocal() as session:
             run = session.scalars(select(AgentRun).where(AgentRun.status == "queued").order_by(AgentRun.id).limit(1)).first()
             run_id = run.id if run else None

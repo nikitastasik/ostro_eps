@@ -159,7 +159,7 @@ def _hotel_geo(session: Session, h: Hotel) -> HotelGeo:
     rv = session.get(ResolvedValue, (h.id, "building_levels"))
     levels = int(rv.value["levels"]) if rv and rv.value and rv.value.get("levels") else (h.building or {}).get("levels")
     src = (rv.sources[0] if rv and rv.sources else (h.building or {}).get("levels_src", "none"))
-    key = (h.id, levels, len(get_region()._overrides_applied))
+    key = (h.id, levels, tuple(get_region()._overrides_applied))
     with _geo_lock:
         if key in _geo_cache:
             _geo_cache.move_to_end(key)
@@ -171,6 +171,13 @@ def _hotel_geo(session: Session, h: Hotel) -> HotelGeo:
         while len(_geo_cache) > 24:
             _geo_cache.popitem(last=False)
     return g
+
+
+def _reset_overrides() -> None:
+    """Снести построенные дома из растров и кэша видов (id сценариев после сброса демо могут повториться)."""
+    get_region().reset_overrides()
+    with _geo_lock:
+        _geo_cache.clear()
 
 
 @router.get("/api/hotels/{hotel_id}/geo")
@@ -556,6 +563,77 @@ def agents_overview(session: Session = Depends(get_session)):
             "worker": settings.worker_enabled, "actualize_interval_min": settings.actualize_interval_min}
 
 
+# =============================================================== демо-тур
+@router.get("/api/tour")
+def tour(session: Session = Depends(get_session)):
+    """Отели для шагов демо-тура подбираются по текущим данным — тур переживает пересборку сида."""
+    q = concierge.EXAMPLES[0]
+    res = concierge.search(session, q, limit=10, log=False)
+    top = res["results"]
+    floor_pick = next((r for r in top if (r["room"] or {}).get("min_floor") and r["room"]["min_floor"] >= 3), None)
+    if floor_pick is None:
+        floor_pick = top[0] if top else None
+    # кабинет отельера: отель с открытым противоречием (лучше про вид на море), где есть и вопросы, поднимающие в выдаче
+    disputed: dict[str, Conflict] = {}
+    for c in session.scalars(select(Conflict).where(Conflict.status == "open").order_by(Conflict.id)):
+        disputed.setdefault(c.hotel_id, c)
+    dm = demand.model(session)
+    boost = {hid: max([demand.utility(session, q, dm)["score"] for q in session.scalars(
+        select(Question).where(Question.hotel_id == hid, Question.status == "open"))] or [0]) for hid in disputed}
+    conflict = max(disputed.values(), key=lambda c: (boost[c.hotel_id] > 0, c.char_key == "sea_view", -c.id), default=None)
+    scenario = None
+    for rv in session.scalars(select(ResolvedValue).where(ResolvedValue.char_key == "sea_view").order_by(ResolvedValue.hotel_id)):
+        v = rv.value or {}
+        if v.get("available") and (v.get("min_floor") or 99) <= 3 and (v.get("max_width_deg") or 0) >= 90:
+            scenario = rv.hotel_id
+            if any(r["hotel"]["id"] == rv.hotel_id for r in top):
+                break
+    # достоверность: «Вид на море», сведённый из разных источников (расчёт по геоданным и ответ отельера)
+    multi = {hid for hid, n in session.execute(
+        select(Fact.hotel_id, func.count(func.distinct(Fact.source))).where(Fact.char_key == "sea_view", Fact.status == "active")
+        .group_by(Fact.hotel_id)).all() if n >= 2}
+    evidence = next((r["hotel"]["id"] for r in top if r["hotel"]["id"] in multi), min(multi) if multi else None)
+
+    def brief(hid):
+        h = session.get(Hotel, hid) if hid else None
+        return {"id": h.id, "name": h.label} if h else None
+    return {
+        "query": q, "top": [r["hotel"]["id"] for r in top[:3]],
+        "floor_hotel": {**brief(floor_pick["hotel"]["id"]), "facade": (floor_pick["room"] or {}).get("facade"),
+                        "min_floor": (floor_pick["room"] or {}).get("min_floor")} if floor_pick else None,
+        "evidence_hotel": ({**brief(evidence), "multi": True} if evidence else
+                           {**brief(floor_pick["hotel"]["id"]), "multi": False} if floor_pick else None),
+        "conflict_hotel": brief(conflict.hotel_id) if conflict else None,
+        "scenario_hotel": brief(scenario),
+        "characteristic": "Есть ли круглосуточная аптека в 10 минутах пешком",
+        "hotels": session.scalar(select(func.count(Hotel.id))),
+    }
+
+
+@router.post("/api/demo/reset")
+def demo_reset(session: Session = Depends(get_session)):
+    """Вернуть демо в исходное состояние: знания из сида, без добавленных характеристик и построенных домов."""
+    from ..seed import reset_demo
+
+    orchestrator.STOP_RUNS.set()  # идущий запуск агентов остановится на следующем отеле и отпустит замок
+    try:
+        with orchestrator.DEMO_LOCK:
+            counts = reset_demo(session)
+            session.commit()
+            _reset_overrides()
+            evaluation_cache_reset()
+    finally:
+        orchestrator.STOP_RUNS.clear()
+    return {"ok": True, "counts": counts}
+
+
+def evaluation_cache_reset() -> None:
+    from .. import evaluation
+
+    with evaluation._lock:
+        evaluation._cache.update({"at": 0.0, "data": None})
+
+
 @router.post("/api/agents/actualize")
 def agents_actualize(session: Session = Depends(get_session)):
     return run_dict(_enqueue(session, "actualize", trigger="manual", params={"limit": 50}))
@@ -628,7 +706,7 @@ def scenario_reset(session: Session = Depends(get_session)):
     for o in session.scalars(select(GeoOverride)):
         o.active = False
     session.flush()
-    get_region().reset_overrides()
+    _reset_overrides()
     run = None
     if ids:
         run = _enqueue(session, "scenario", trigger="change:reset", params={"reset_ids": ids, "radius_m": 1200})

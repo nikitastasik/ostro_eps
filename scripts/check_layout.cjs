@@ -15,9 +15,8 @@ const Q = 'тихий номер с видом на закат недалеко 
     ['карточка', `/hotel/${encodeURIComponent(ids[0])}?q=${encodeURIComponent(Q)}`],
     ['сравнение', `/compare?ids=${ids.map(encodeURIComponent).join(',')}&q=${encodeURIComponent(Q)}`],
     ['кабинет', `/hotelier?hotel=${encodeURIComponent(ids[0])}`], ['агенты', '/agents'], ['характеристики', '/characteristics'],
-    ['метрики', '/metrics'],
+    ['метрики', '/metrics'], ['тур', '/tour'],
   ];
-  if (process.env.TOUR) pages.push(['тур', '/tour']);
   let bad = 0;
   for (const w of [390, 768, 1024, 1440]) {
     const ctx = await browser.newContext({ viewport: { width: w, height: w === 390 ? 844 : 900 }, hasTouch: w === 390 });

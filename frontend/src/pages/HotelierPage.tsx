@@ -173,7 +173,7 @@ export default function HotelierPage() {
                 <div className="row between wrap">
                   <div>
                     <h2>{h.name}</h2>
-                    <div className="small muted">{h.address} · <Link to={`/hotel/${encodeURIComponent(h.id)}`}>как видят гости</Link></div>
+                    <div className="small muted">{h.address ? `${h.address} · ` : ""}<Link to={`/hotel/${encodeURIComponent(h.id)}`}>как видят гости</Link></div>
                   </div>
                   <div className="row">
                     <span className="chip violet">вопросов: {open.length}</span>
@@ -188,7 +188,7 @@ export default function HotelierPage() {
                     {h.boosts!.map((b) => (
                       <div key={b.question_id} className="row between mt-s boost">
                         <div className="small"><b>{(b.titles || []).join(", ")}</b> — {b.text}</div>
-                        <button className="btn small" onClick={() => { setTab("questions"); setTimeout(() => document.getElementById(`q-${b.question_id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 50); }}>Ответить</button>
+                        <button className="btn small nowrap" onClick={() => { setTab("questions"); setTimeout(() => document.getElementById(`q-${b.question_id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 50); }}>Ответить</button>
                       </div>
                     ))}
                   </div>

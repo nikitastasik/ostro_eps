@@ -191,3 +191,39 @@ def test_questions_ranked_by_utility(client):
     assert h["boosts"] and h["boosts"][0]["question_id"] == h["questions"][0]["id"]
     m = client.get("/api/metrics").json()["eval"]["demand"]
     assert 0 < m["top_share"] <= 1 and m["demand_queries"] > 50
+
+
+def test_tour_and_demo_reset(client):
+    """Демо-тур: отели для шагов подобраны по данным; сброс демо сносит построенный дом и возвращает знания из сида."""
+    import math
+
+    assert client.post("/api/demo/reset").json()["ok"]
+    t = client.get("/api/tour").json()
+    assert t["hotels"] == client.get("/api/meta").json()["hotels"] and len(t["top"]) >= 2
+    assert t["floor_hotel"]["min_floor"] >= 3 and t["conflict_hotel"] and t["scenario_hotel"]
+    base = client.get("/api/agents/overview").json()
+    assert base["overrides"] == [] and base["questions"].get("open")
+    sh = t["scenario_hotel"]["id"]
+    card = client.get(f"/api/hotels/{sh}").json()
+    sea = next(i for g in card["groups"] for i in g["items"] if i["key"] == "sea_view")["value"]
+    window = {"facade": sea["best_facade"], "floor": sea["min_floor"]}
+    rays0 = client.get(f"/api/hotels/{sh}/view", params=window).json()["ray_counts"]
+    assert rays0["sea"] > 0
+    # «рядом построили дом»: как на странице агентов — 55 м перед лучшим «морским» фасадом
+    f = next(x for x in client.get(f"/api/hotels/{sh}/geo").json()["facades"] if x["key"] == sea["best_facade"])
+    az = math.radians(f["normal_az"])
+    lat = f["lat"] + 55 * math.cos(az) / 111132
+    lon = f["lon"] + 55 * math.sin(az) / (111320 * math.cos(math.radians(f["lat"])))
+    client.post("/api/scenarios/building", json={"lat": lat, "lon": lon, "height_m": 50, "width_m": 60, "length_m": 24,
+                                                 "angle_deg": -f["normal_az"]})
+    assert client.get(f"/api/hotels/{sh}/view", params=window).json()["ray_counts"]["sea"] < rays0["sea"]
+    q = client.get("/api/questions", params={"status": "open", "limit": 1}).json()["items"][0]
+    token = client.post("/api/auth/login", json={"login": "hotelier", "password": "hotelier123"}).json()["token"]
+    client.post(f"/api/hotelier/questions/{q['id']}/answer", json={"text": "Да"}, headers={"Authorization": f"Bearer {token}"})
+    assert client.get("/api/agents/overview").json()["questions"] != base["questions"]
+    # сброс: дом снесён, вопросы и противоречия — как в сиде, тур подбирает те же отели
+    client.post("/api/demo/reset")
+    after = client.get("/api/agents/overview").json()
+    assert after["overrides"] == [] and after["questions"] == base["questions"] and after["conflicts"] == base["conflicts"]
+    assert client.get(f"/api/hotels/{sh}/view", params=window).json()["ray_counts"] == rays0
+    assert client.get("/api/tour").json() == t

@@ -233,6 +233,17 @@ export interface ViewData {
 
 export type RayKind = "sea" | "building" | "trees" | "land" | "mountain";
 
+export interface TourData {
+  query: string;
+  top: string[];
+  floor_hotel: { id: string; name: string; facade: string | null; min_floor: number | null } | null;
+  evidence_hotel: { id: string; name: string; multi: boolean } | null;
+  conflict_hotel: { id: string; name: string } | null;
+  scenario_hotel: { id: string; name: string } | null;
+  characteristic: string;
+  hotels: number;
+}
+
 export interface WishData {
   hotel: SearchResult["hotel"];
   query: string;
@@ -302,6 +313,8 @@ export const api = {
   facts: (id: string, key?: string) =>
     request<{ items: Fact[] }>(`/api/hotels/${encodeURIComponent(id)}/facts${key ? `?char_key=${key}` : ""}`),
   geo: (id: string) => request<GeoData>(`/api/hotels/${encodeURIComponent(id)}/geo`),
+  tour: () => request<TourData>("/api/tour"),
+  demoReset: () => request<{ ok: boolean; counts: Record<string, number> }>("/api/demo/reset", { method: "POST" }),
   wish: (id: string, q: string) => request<WishData>(`/api/hotels/${encodeURIComponent(id)}/wish?q=${encodeURIComponent(q)}`),
   fit: (id: string, q: string) =>
     request<{ query: SearchResponse["query"]; result: SearchResult }>(`/api/hotels/${encodeURIComponent(id)}/fit?q=${encodeURIComponent(q)}`),

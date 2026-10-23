@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { api, Conflict, HotelListItem, Question, Run } from "../api";
 import MapView from "../MapView";
 import RunLog, { RunDrawer } from "../RunLog";
@@ -25,7 +25,13 @@ export default function AgentsPage() {
   const hotels = useAsync<{ items: HotelListItem[] }>(() => api.hotels(), []);
   const [selRun, setSelRun] = useState<number | null>(null);
   const [drawer, setDrawer] = useState<{ id: number; title: string } | null>(null);
-  const [scHotel, setScHotel] = useState("");
+  const [params] = useSearchParams();
+  const [scHotel, setScHotel] = useState(params.get("scenario") || "");
+  useEffect(() => {
+    if (window.location.hash !== "#scenario") return;
+    const t = setTimeout(() => document.getElementById("scenario")?.scrollIntoView({ behavior: "smooth", block: "start" }), 500);
+    return () => clearTimeout(t);
+  }, []);
   const [scHeight, setScHeight] = useState(50);
   const [busy, setBusy] = useState(false);
   const toast = useToast();
@@ -132,7 +138,7 @@ export default function AgentsPage() {
             ))}
           </div>
         </div>
-        <div className="card">
+        <div className="card" id="scenario">
           <h2>Сценарий: рядом построили дом</h2>
           <p className="small muted">Ставим новое здание перед «морскими» окнами выбранного отеля. Агенты пересчитывают виды, закат и шум для всех отелей в радиусе 1,2 км, а изменения попадают в ленту.</p>
           <div className="row wrap">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { api, CharValue, Fact, GeoData, HotelCard, Run } from "../api";
 import MapView from "../MapView";
@@ -45,10 +45,10 @@ function EvidenceView({ ev }: { ev: Record<string, any> }) {
 }
 
 function CharItem({ c, hotelId, onRecalc }: { c: CharValue; hotelId: string; onRecalc: (keys: string[]) => void }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(window.location.hash === `#char-${c.key}`);
   const facts = useAsync<{ items: Fact[] }>(() => (open ? api.facts(hotelId, c.key) : Promise.resolve({ items: [] })), [open, hotelId, c.key, c.updated_at]);
   return (
-    <div className="char">
+    <div className="char" id={`char-${c.key}`}>
       <div className="char-head" onClick={() => setOpen(!open)}>
         <div className="char-icon"><Icon name={c.icon} /></div>
         <div>
@@ -122,6 +122,13 @@ export default function HotelPage() {
   const [params] = useSearchParams();
   const q = params.get("q") || "";
   const fit = useAsync(() => (q ? api.fit(id, q) : Promise.resolve(null)), [id, q]);
+  const loaded = !!card.data;
+  useEffect(() => {
+    // ссылки из демо-тура: #view — панорама и лучи, #char-<ключ> — раскрытая характеристика
+    if (!loaded || !window.location.hash) return;
+    const t = setTimeout(() => document.getElementById(window.location.hash.slice(1))?.scrollIntoView({ behavior: "smooth", block: "start" }), 400);
+    return () => clearTimeout(t);
+  }, [loaded]);
   const [runId, setRunId] = useState<number | null>(null);
   const [openRun, setOpenRun] = useState<number | null>(null);
   const cmp = useCompare();
@@ -211,7 +218,7 @@ export default function HotelPage() {
 
       <div className="layout-hotel">
         <div className="groups">
-          <div className="card">
+          <div className="card" id="view">
             <h2>Что видно из окна</h2>
             <p className="small muted">Профиль горизонта для выбранной стороны здания и этажа: рельеф, дома, деревья и море по лучам с шагом 1°. Линии — путь Солнца перед закатом 15-го числа каждого месяца; сплошная — закат виден из этого окна.</p>
             <Panorama key={fit.data?.result.room?.facade || "base"} hotelId={h.id}
