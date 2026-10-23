@@ -52,7 +52,7 @@ function ResultCard({ r, rank, hl, onHover, q }: { r: SearchResult; rank: number
       <div>
         <div className="row between wrap" style={{ alignItems: "flex-start" }}>
           <div style={{ flex: "1 1 240px", minWidth: 0 }}>
-            <h3 style={{ marginBottom: 2 }}><Link to={href(h.id)}>{h.name}</Link></h3>
+            <h2 className="result-title"><Link to={href(h.id)}>{h.name}</Link></h2>
             <div className="small muted">{KIND_RU[h.kind] || h.kind}{h.stars ? ` · ${"★".repeat(h.stars)}` : ""}{h.address ? ` · ${h.address}` : ""}{h.levels ? ` · ${h.levels} эт.` : ""}</div>
             {(r.others || []).length > 0 && (
               <div className="tiny mt-s">
@@ -124,18 +124,21 @@ export default function SearchPage({ meta }: { meta: Meta | null }) {
   const results = res?.results.filter((r) => !r.excluded) || [];
   return (
     <div className="page wide">
-      <div className="hero">
+      <div className={`hero ${res ? "compact" : ""}`}>
         <h1>Найдите отель, который подходит именно вам</h1>
-        <p>
+        <p className="hero-lead">
           Опишите своими словами, что для вас важно. Агенты знают об отелях Сочи то, чего нет в карточках:
           что видно из окна на каждом этаже, когда виден закат, насколько шумно ночью с каждой стороны здания,
           сколько на самом деле идти до пляжа в горку — и что ответили отельеры.
         </p>
         <form className="searchbox" onSubmit={(e) => { e.preventDefault(); run(text); }}>
-          <input value={text} onChange={(e) => setText(e.target.value)} placeholder="например: тихий номер с видом на закат недалеко от моря" autoFocus />
+          <label className="searchfield">
+            <span className="field-label">Что для вас важно в отеле</span>
+            <input value={text} onChange={(e) => setText(e.target.value)} placeholder="например: тихий номер с видом на закат недалеко от моря" autoFocus />
+          </label>
           <button className="btn primary" type="submit" disabled={loading}>{loading ? <Spinner /> : <Icon name="search" />} Найти</button>
         </form>
-        <Link to="/tour" className="hero-tour"><Icon name="check" size={15} /> Демо-тур: проверить решение за 5 минут</Link>
+        {!res && <Link to="/tour" className="hero-tour"><Icon name="check" size={15} /> Демо-тур: проверить решение за 5 минут</Link>}
         <div className="examples">
           {(meta?.examples || []).map((ex) => (
             <button key={ex} onClick={() => { setText(ex); run(ex); }}>{ex}</button>
@@ -156,7 +159,7 @@ export default function SearchPage({ meta }: { meta: Meta | null }) {
                 return (
                   <span key={idx.join("-")} className={`chip ${c.required ? "warn" : "accent"}`} title={c.source_text ? `из фразы «${c.source_text}»` : undefined}>
                     {critText(crits)}{c.weight > 1 ? " · важно" : c.weight < 1 ? " · желательно" : ""}
-                    <span className="x" onClick={() => removeCriteria(idx)}>✕</span>
+                    <button type="button" className="x" onClick={() => removeCriteria(idx)} aria-label={`Убрать условие «${critText(crits)}»`}>✕</button>
                   </span>
                 );
               })}
@@ -199,9 +202,9 @@ export default function SearchPage({ meta }: { meta: Meta | null }) {
 
       {!res && !loading && (
         <div className="grid three mt">
-          <div className="card"><h3><Icon name="sunset" /> Вид и закат по этажам</h3><p className="small muted">Лучи из каждого окна по рельефу Copernicus DEM и высотам 44 тыс. зданий OSM; положение Солнца по месяцам.</p></div>
-          <div className="card"><h3><Icon name="moon" /> Тишина с каждой стороны</h3><p className="small muted">Шум дорог, железной дороги и ночных баров с экранированием домами — отдельно для каждого фасада.</p></div>
-          <div className="card"><h3><Icon name="chat" /> Агенты спрашивают отельеров</h3><p className="small muted">Чего нет в открытых данных — питомцы, шторы, окна — агент спрашивает и раскладывает свободный ответ по полям.</p></div>
+          <div className="card"><h2 className="h3"><Icon name="sunset" /> Вид и закат по этажам</h2><p className="small muted">Лучи из каждого окна по рельефу Copernicus DEM и высотам 44 тыс. зданий OSM; положение Солнца по месяцам.</p></div>
+          <div className="card"><h2 className="h3"><Icon name="moon" /> Тишина с каждой стороны</h2><p className="small muted">Шум дорог, железной дороги и ночных баров с экранированием домами — отдельно для каждого фасада.</p></div>
+          <div className="card"><h2 className="h3"><Icon name="chat" /> Агенты спрашивают отельеров</h2><p className="small muted">Чего нет в открытых данных — питомцы, шторы, окна — агент спрашивает и раскладывает свободный ответ по полям.</p></div>
         </div>
       )}
     </div>

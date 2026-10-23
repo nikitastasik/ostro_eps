@@ -3,7 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { api, Conflict, HotelListItem, Question, Run } from "../api";
 import MapView from "../MapView";
 import RunLog, { RunDrawer } from "../RunLog";
-import { ErrorBox, fmtDate, Icon, num, plural, REASON_RU, RUN_KIND_RU, SOURCE_RU, Spinner, TRIGGER_RU, useAsync, useToast } from "../ui";
+import { ErrorBox, fmtDate, Icon, num, plural, pressable, REASON_RU, RUN_KIND_RU, SOURCE_RU, Spinner, TRIGGER_RU, useAsync, useToast } from "../ui";
 
 
 function useInterval(fn: () => void, ms: number) {
@@ -96,7 +96,7 @@ export default function AgentsPage() {
         <div className="card">
           <div className="row between"><h2>Запуски</h2><button className="btn small" onClick={refresh}><Icon name="refresh" size={14} /> Обновить</button></div>
           {runs.data?.items.map((r) => (
-            <div key={r.id} className="row between" style={{ padding: "7px 0", borderBottom: "1px solid #edf0f5", cursor: "pointer" }} onClick={() => setSelRun(r.id)}>
+            <div key={r.id} className="row between" style={{ padding: "7px 0", borderBottom: "1px solid var(--line-soft)", cursor: "pointer" }} {...pressable(() => setSelRun(r.id))}>
               <div className="small">
                 <b>#{r.id}</b> {RUN_KIND_RU[r.kind] || r.kind}{r.hotel_name ? ` · ${r.hotel_name}` : ""} <span className="tiny muted">· {TRIGGER_RU[r.trigger] || r.trigger} · {fmtDate(r.created_at, true)}</span>
                 <div className="tiny muted">{r.summary || r.error || ""}</div>
@@ -142,10 +142,10 @@ export default function AgentsPage() {
           <h2>Сценарий: рядом построили дом</h2>
           <p className="small muted">Ставим новое здание перед «морскими» окнами выбранного отеля. Агенты пересчитывают виды, закат и шум для всех отелей в радиусе 1,2 км, а изменения попадают в ленту.</p>
           <div className="row wrap">
-            <select className="select" value={scHotel} onChange={(e) => setScHotel(e.target.value)} style={{ maxWidth: 320 }}>
+            <select className="select" aria-label="Отель, перед которым построить дом" value={scHotel} onChange={(e) => setScHotel(e.target.value)} style={{ maxWidth: 320 }}>
               {seaHotels.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
             </select>
-            <select className="select" value={scHeight} onChange={(e) => setScHeight(Number(e.target.value))} style={{ width: 150 }}>
+            <select className="select" aria-label="Высота нового дома" value={scHeight} onChange={(e) => setScHeight(Number(e.target.value))} style={{ width: 150 }}>
               {[20, 35, 50, 70].map((x) => <option key={x} value={x}>{x} м (~{Math.round(x / 3)} эт.)</option>)}
             </select>
             <button className="btn primary" disabled={busy || !scHotel} onClick={placeBuilding}>{busy ? <Spinner /> : <Icon name="crane" />} Построить</button>
@@ -160,7 +160,7 @@ export default function AgentsPage() {
             <div className="mt">
               <MapView className="map small" fitKey={String(o.overrides.length)}
                 polygons={o.overrides.filter((x: any) => x.active).map((x: any) => ({ points: x.geometry.coordinates[0], color: "#e0464b", title: `${x.label} (${x.height_m} м)` }))}
-                markers={(hotels.data?.items || []).filter((h) => h.id === scHotel).map((h) => ({ id: h.id, lat: h.lat, lon: h.lon, color: "#0a6cff", title: h.name }))} />
+                markers={(hotels.data?.items || []).filter((h) => h.id === scHotel).map((h) => ({ id: h.id, lat: h.lat, lon: h.lon, color: "#0e41d2", title: h.name }))} />
               {o.overrides.map((x: any) => <div key={x.id} className="tiny muted mt-s">{x.active ? "●" : "○"} {x.label} — {x.height_m} м · {fmtDate(x.created_at, true)}</div>)}
             </div>
           )}

@@ -5,7 +5,7 @@ import MapView from "../MapView";
 import Panorama from "../Panorama";
 import { WishButton } from "../Wish";
 import RunLog, { RunDrawer } from "../RunLog";
-import { Confidence, ErrorBox, fmtDate, Icon, KIND_RU, NeedsList, plural, REASON_RU, RUN_KIND_RU, Sources, Spinner, StatusBadge, TRIGGER_RU, useAsync, useCompare, useToast } from "../ui";
+import { Confidence, ErrorBox, fmtDate, Icon, KIND_RU, NeedsList, plural, pressable, REASON_RU, RUN_KIND_RU, Sources, Spinner, StatusBadge, TRIGGER_RU, useAsync, useCompare, useToast } from "../ui";
 
 function noiseColor(db?: number) {
   if (db == null) return "#9aa6b8";
@@ -30,7 +30,7 @@ function CharItem({ c, hotelId, onRecalc }: { c: CharValue; hotelId: string; onR
   const facts = useAsync<{ items: Fact[] }>(() => (open ? api.facts(hotelId, c.key) : Promise.resolve({ items: [] })), [open, hotelId, c.key, c.updated_at]);
   return (
     <div className="char" id={`char-${c.key}`}>
-      <div className="char-head" onClick={() => setOpen(!open)}>
+      <div className="char-head" {...pressable(() => setOpen(!open))} aria-expanded={open}>
         <div className="char-icon"><Icon name={c.icon} /></div>
         <div>
           <div className="row" style={{ gap: 8 }}>
@@ -88,10 +88,10 @@ function Profile({ profile }: { profile: [number, number][] }) {
   return (
     <svg viewBox={`0 0 ${W} ${H + 16}`} style={{ width: "100%", height: "auto" }}>
       <polygon points={`0,${H} ${pts} ${W},${H}`} fill="#dbeafe" />
-      <polyline points={pts} fill="none" stroke="#0a6cff" strokeWidth={2} />
-      <text x={2} y={H + 13} fontSize={11} fill="#66758c">отель · {Math.round(profile[0][1])} м</text>
-      <text x={W - 2} y={H + 13} fontSize={11} fill="#66758c" textAnchor="end">{Math.round(maxD)} м · {Math.round(profile[profile.length - 1][1])} м</text>
-      <text x={W - 2} y={12} fontSize={11} fill="#66758c" textAnchor="end">перепад {Math.round(zmax - zmin)} м</text>
+      <polyline points={pts} fill="none" stroke="#0e41d2" strokeWidth={2} />
+      <text x={2} y={H + 13} fontSize={11} fill="#696d73">отель · {Math.round(profile[0][1])} м</text>
+      <text x={W - 2} y={H + 13} fontSize={11} fill="#696d73" textAnchor="end">{Math.round(maxD)} м · {Math.round(profile[profile.length - 1][1])} м</text>
+      <text x={W - 2} y={12} fontSize={11} fill="#696d73" textAnchor="end">перепад {Math.round(zmax - zmin)} м</text>
     </svg>
   );
 }
@@ -141,7 +141,7 @@ export default function HotelPage() {
   const beach = g?.routes?.beach_access;
   const openQs = (h.questions || []).filter((q) => q.status === "open").length;
   const lines: { points: [number, number][]; color: string; weight?: number; dash?: string; title?: string; noFit?: boolean }[] = [];
-  if (beach) lines.push({ points: beach.line, color: "#0a6cff", weight: 5, title: "Пешком до пляжа" });
+  if (beach) lines.push({ points: beach.line, color: "#0e41d2", weight: 5, title: "Пешком до пляжа" });
   if (g?.routes?.center_access) lines.push({ points: g.routes.center_access.line, color: "#7c4ddb", weight: 3, dash: "6 6", title: "Пешком до центра", noFit: true });
 
   return (
@@ -174,7 +174,7 @@ export default function HotelPage() {
           </div>
         </div>
         <div className="row wrap" style={{ justifyContent: "flex-end" }}>
-          <button className="btn primary" onClick={() => recalc()}><Icon name="refresh" /> Пересчитать агентами</button>
+          <button className="btn" onClick={() => recalc()}><Icon name="refresh" /> Пересчитать агентами</button>
           <button className={`btn ${cmp.has(h.id) ? "primary" : ""}`} onClick={() => cmp.toggle(h.id, h.name)}>{cmp.has(h.id) ? "В сравнении" : "Добавить в сравнение"}</button>
           <Link className="btn" to={`/hotelier?hotel=${encodeURIComponent(h.id)}`}>Кабинет отельера</Link>
         </div>
@@ -186,7 +186,7 @@ export default function HotelPage() {
             <h2 style={{ margin: 0 }}>Под ваш запрос</h2>
             <div className="row wrap">
               <span className="small muted">«{q}» · <Link to={`/?q=${encodeURIComponent(q)}`}>к выдаче</Link></span>
-              <WishButton hotelId={h.id} q={q} />
+              <WishButton hotelId={h.id} q={q} primary />
             </div>
           </div>
           {fit.data.result.room && (
@@ -223,16 +223,16 @@ export default function HotelPage() {
               <MapView
                 className="map small"
                 fitKey={h.id}
-                polygons={g.footprint ? [{ points: g.footprint, color: "#13213b", fill: "#0a6cff", title: "Контур здания (OSM)" }] : []}
+                polygons={g.footprint ? [{ points: g.footprint, color: "#2d3137", fill: "#0e41d2", title: "Контур здания (OSM)" }] : []}
                 arrows={g.facades.map((f) => ({ lat: f.lat, lon: f.lon, az: f.normal_az, color: noiseColor(f.night_db), label: f.key,
                   title: [f.key + "-сторона", f.night_db != null ? `ночью ≈${Math.round(f.night_db)} дБ` : "", f.sea_view, f.sunset_view].filter(Boolean).join(" · ") }))}
                 lines={lines}
-                markers={g.footprint ? [] : [{ id: h.id, lat: h.lat, lon: h.lon, color: "#13213b", label: "", title: h.name }]}
+                markers={g.footprint ? [] : [{ id: h.id, lat: h.lat, lon: h.lon, color: "#2d3137", label: "", title: h.name }]}
               />
             ) : <Spinner />}
             <div className="legend">
               <span><i style={{ background: "#14a05a" }} />тихо ночью</span><span><i style={{ background: "#e3b100" }} />умеренно</span>
-              <span><i style={{ background: "#e0464b" }} />шумно</span><span><i style={{ background: "#0a6cff" }} />путь до пляжа</span>
+              <span><i style={{ background: "#e0464b" }} />шумно</span><span><i style={{ background: "#0e41d2" }} />путь до пляжа</span>
               {g?.routes?.center_access && <span><i style={{ background: "#7c4ddb" }} />пунктир — путь до центра</span>}
             </div>
             {beach && <div className="mt-s"><div className="small"><b>Профиль пути до пляжа:</b> {beach.summary}</div><Profile profile={beach.profile} /></div>}
@@ -297,7 +297,7 @@ export default function HotelPage() {
         <div className="grid two">
           <div>
             {(h.runs || []).map((r) => (
-              <div key={r.id} className="row between" style={{ padding: "7px 0", borderBottom: "1px solid #edf0f5" }}>
+              <div key={r.id} className="row between" style={{ padding: "7px 0", borderBottom: "1px solid var(--line-soft)" }}>
                 <span className="small"><b>#{r.id}</b> {RUN_KIND_RU[r.kind] || r.kind} · {TRIGGER_RU[r.trigger] || r.trigger} · <span className="muted">{fmtDate(r.created_at, true)}</span><br /><span className="tiny muted">{r.summary}</span></span>
                 <button className="btn small" onClick={() => setOpenRun(r.id)}>Шаги</button>
               </div>

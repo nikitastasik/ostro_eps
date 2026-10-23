@@ -78,9 +78,14 @@ export default function RunLog({ runId, onDone }: { runId: number; onDone?: (run
 }
 
 export function RunDrawer({ runId, onClose, onDone, title }: { runId: number; onClose: () => void; onDone?: (r: Run) => void; title?: string }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
   return (
     <div className="drawer-bg" onClick={onClose}>
-      <div className="drawer" onClick={(e) => e.stopPropagation()}>
+      <div className="drawer" role="dialog" aria-modal="true" aria-label={title || "Работа агентов"} onClick={(e) => e.stopPropagation()}>
         <div className="row between mb">
           <h2>{title || "Работа агентов"}</h2>
           <button className="btn ghost" onClick={onClose}>Закрыть</button>

@@ -114,21 +114,21 @@ export default function MapView({ markers = [], lines = [], polygons = [], arrow
       const html = `<div style="transform: rotate(${a.az}deg); width:34px; height:34px; display:grid; place-items:center">
         <svg width="26" height="26" viewBox="0 0 24 24"><path d="M12 2 19 20 12 16 5 20z" fill="${a.color}" stroke="white" stroke-width="1.5"/></svg></div>`;
       const icon = L.divIcon({ html, className: "", iconSize: [34, 34], iconAnchor: [17, 17] });
-      const m = L.marker([a.lat, a.lon], { icon, interactive: !!a.title });
+      const m = L.marker([a.lat, a.lon], { icon, interactive: !!a.title, keyboard: !!a.title, title: a.title || "" });
       if (a.title) m.bindTooltip(a.title, { direction: "top" });
       m.addTo(layer);
       if (a.label) {
-        const t = L.divIcon({ html: `<div style="font-weight:800;font-size:11px;color:${a.color};text-shadow:0 0 3px white,0 0 3px white">${a.label}</div>`, className: "", iconSize: [40, 14], iconAnchor: [-12, 7] });
+        const t = L.divIcon({ html: `<div style="font-weight:800;font-size:12px;color:#2d3137;text-shadow:0 0 3px white,0 0 3px white,0 0 3px white">${a.label}</div>`, className: "", iconSize: [40, 14], iconAnchor: [-12, 7] });
         L.marker([a.lat, a.lon], { icon: t, interactive: false }).addTo(layer);
       }
     }
     for (const m of markers) {
       const sz = m.size ?? 30;
       const icon = L.divIcon({
-        html: `<div class="mk ${m.highlight ? "hl" : ""}" style="background:${m.color || "#0a6cff"}${m.size ? `;width:${sz}px;height:${sz}px;border-width:2px` : ""}">${m.label ?? ""}</div>`,
+        html: `<div class="mk ${m.highlight ? "hl" : ""}" style="background:${m.color || "#0e41d2"}${m.size ? `;width:${sz}px;height:${sz}px;border-width:2px` : ""}">${m.label ?? ""}</div>`,
         className: "", iconSize: [sz, sz], iconAnchor: [sz / 2, sz / 2],
       });
-      const mk = L.marker([m.lat, m.lon], { icon, zIndexOffset: m.highlight ? 1000 : 0 });
+      const mk = L.marker([m.lat, m.lon], { icon, zIndexOffset: m.highlight ? 1000 : 0, title: m.title || m.label || "" });
       if (m.title) mk.bindTooltip(m.title, { direction: "top", offset: [0, -14] });
       mk.on("click", () => markerClickRef.current?.(m.id));
       mk.addTo(layer);

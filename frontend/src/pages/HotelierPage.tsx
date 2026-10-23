@@ -21,8 +21,8 @@ function Login({ onLogin }: { onLogin: () => void }) {
             onLogin();
           } catch (err) { setError(err); }
         }}>
-          <input className="input" value={login} onChange={(e) => setLogin(e.target.value)} placeholder="Логин" />
-          <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Пароль" />
+          <label><span className="field-label">Логин</span><input className="input" value={login} onChange={(e) => setLogin(e.target.value)} autoComplete="username" /></label>
+          <label><span className="field-label">Пароль</span><input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" /></label>
           <button className="btn primary">Войти</button>
           <ErrorBox error={error} />
         </form>
@@ -65,7 +65,7 @@ function QuestionCard({ q, onDone }: { q: Question; onDone: () => void }) {
       {q.utility && <div className="small utility">{q.utility.score > 0 ? "↑ " : ""}{q.utility.text}</div>}
       {!steps && (
         <>
-          <textarea className="textarea" placeholder="Ответьте своими словами — агент сам разложит ответ по полям" value={text} onChange={(e) => { setText(e.target.value); setPreview(null); }} />
+          <textarea className="textarea" aria-label="Ответ отельера" placeholder="Ответьте своими словами — агент сам разложит ответ по полям" value={text} onChange={(e) => { setText(e.target.value); setPreview(null); }} />
           <div className="row mt-s wrap">
             <button className="btn small" disabled={!text.trim() || busy} onClick={doPreview}>Как агент поймёт ответ?</button>
             <button className="btn small primary" disabled={!text.trim() || busy} onClick={submit}>Отправить ответ</button>
@@ -111,7 +111,7 @@ function KnownItem({ c, hotelId, onChanged }: { c: CharValue; hotelId: string; o
       </div>
       {edit && (
         <div className="mt-s">
-          <textarea className="textarea" placeholder="Опишите, как на самом деле — свободным текстом" value={text} onChange={(e) => setText(e.target.value)} />
+          <textarea className="textarea" aria-label="Как на самом деле" placeholder="Опишите, как на самом деле — свободным текстом" value={text} onChange={(e) => setText(e.target.value)} />
           <button className="btn small primary mt-s" disabled={!text.trim() || busy} onClick={async () => {
             setBusy(true);
             try { const r = await api.correct(hotelId, c.key, text); toast.show(`Агент записал: ${r.value.summary}`); setEdit(false); onChanged(); } catch (e) { toast.show(String(e)); }
@@ -152,14 +152,14 @@ export default function HotelierPage() {
       </div>
       <div className="layout-hotelier">
         <div className="card" style={{ padding: 12 }}>
-          <input className="input" placeholder="Найти свой отель" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input className="input" aria-label="Найти свой отель" placeholder="Найти свой отель" value={q} onChange={(e) => setQ(e.target.value)} />
           <div style={{ maxHeight: 640, overflow: "auto", marginTop: 8 }}>
             {list.loading && <Spinner />}
             {items.map((x) => (
-              <div key={x.id} onClick={() => setParams({ hotel: x.id })} style={{ padding: "8px 10px", borderRadius: 8, cursor: "pointer", background: x.id === hotelId ? "var(--accent-soft)" : undefined }}>
-                <div className="row between"><span className="small"><b>{x.name}</b></span>{x.open_questions > 0 && <span className="badge asked">{x.open_questions}</span>}</div>
-                <div className="tiny muted">{x.address || ""}</div>
-              </div>
+              <button type="button" key={x.id} className="hotel-pick" onClick={() => setParams({ hotel: x.id })} aria-current={x.id === hotelId}>
+                <span className="row between"><span className="small"><b>{x.name}</b></span>{x.open_questions > 0 && <span className="badge asked" title="Открытых вопросов от агентов">{x.open_questions}<span className="sr-only"> открытых вопросов</span></span>}</span>
+                <span className="tiny muted" style={{ display: "block" }}>{x.address || ""}</span>
+              </button>
             ))}
           </div>
         </div>
@@ -177,7 +177,7 @@ export default function HotelierPage() {
                   </div>
                   <div className="row">
                     <span className="chip violet">вопросов: {open.length}</span>
-                    <span className="chip bad">противоречий: {(h.conflicts || []).length}</span>
+                    <span className={`chip ${(h.conflicts || []).length ? "bad" : "ghost"}`}>противоречий: {(h.conflicts || []).length}</span>
                     <span className="chip accent">знаем {h.known} из {h.total}</span>
                   </div>
                 </div>

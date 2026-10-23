@@ -129,7 +129,7 @@ export default function TourPage() {
         <div className="card tour-step" key={s.title}>
           <div className="tour-n">{i + 1}</div>
           <div className="col" style={{ gap: 6, minWidth: 0 }}>
-            <h3 style={{ margin: 0 }}>{s.title}</h3>
+            <h2 className="h3" style={{ margin: 0 }}>{s.title}</h2>
             <div className="small"><b>Что сделать.</b> {s.todo}</div>
             <div className="small"><b>На что смотреть.</b> {s.look}</div>
             <div className="row wrap">{s.req.map((r) => <span key={r} className="chip accent">{r}</span>)}</div>
@@ -141,7 +141,7 @@ export default function TourPage() {
         </div>
       ))}
       <div className="card mt">
-        <h3>Вернуть демо в исходное состояние</h3>
+        <h2 className="h3">Вернуть демо в исходное состояние</h2>
         <p className="small muted">Удаляет ответы, добавленные характеристики и построенные дома, заново загружает знания агентов из сида. Фоновые запуски на это время приостанавливаются.</p>
         <button className="btn" disabled={busy} onClick={reset}>{busy ? <Spinner /> : <Icon name="refresh" size={15} />} Вернуть демо</button>
       </div>
