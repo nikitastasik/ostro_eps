@@ -134,3 +134,17 @@ def test_runtime_texts_are_clean(client):
     bad += [("compare", row["title"], c["summary"], anomalies(c["summary"])) for row in cmp["rows"] for c in row["cells"]
             if anomalies(c["summary"])]
     assert not bad, bad[:5]
+
+
+def test_view_rays_for_map(client):
+    """Лучи из окна: сектор окна — ровно 120°, сводка с числами, у зданий-заслонов есть контуры."""
+    import re
+
+    hid = client.get("/api/hotels").json()["items"][0]["id"]
+    v = client.get(f"/api/hotels/{hid}/view").json()
+    assert v["window"]["lat"] and len(v["rays"]) == len(v["azimuths"])
+    assert sum(v["ray_counts"].values()) == 120 == sum(1 for r in v["rays"] if r["win"])
+    assert v["rays_caption"].startswith("Из 120° обзора:")
+    assert sum(int(x) for x in re.findall(r"(\d+)° —", v["rays_caption"])) == 120
+    for b in v["blockers"]:
+        assert len(b["polygon"]) >= 4 and b["deg"] >= 2 and "от окна" in b["label"]

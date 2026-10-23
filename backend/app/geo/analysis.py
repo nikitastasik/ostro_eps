@@ -89,6 +89,11 @@ def ordinal_floor(n: int) -> str:
     return f"{n}-го этажа"
 
 
+RAY_KINDS = ["sea", "building", "trees", "land", "mountain"]
+RAY_KIND_BY_CLS = {CLS_SEA: "sea", CLS_BUILDING: "building", CLS_TREES: "trees", CLS_LAND: "land",
+                   CLS_MOUNTAIN: "mountain"}
+
+
 class HotelGeo:
     def __init__(self, region, hotel: dict, levels: int | None = None, levels_src: str | None = None):
         self.rd = region
@@ -139,6 +144,44 @@ class HotelGeo:
             res = self.view_engine.analyse_point(f.x, f.y, self.ground, self.floors, az, self.own_id)
             out[f.key] = {"facade": f, "az": az, "floors": {r["floor"]: r for r in res}}
         return out
+
+    def rays(self, fkey: str, floor: int, max_d: float = 1800.0) -> dict:
+        """Лучи из окна для карты: во что упирается каждый луч и какие здания закрывают вид.
+
+        Луч, по которому видно море, идёт до первой видимой воды (дальше карта продолжает его в море);
+        остальные — до объекта, который образует горизонт (sky_d). В сводку попадает сектор окна ±60°
+        (120 лучей через 1°), здания-заслоны находятся по растру застройки в конце луча.
+        """
+        v = self.view[fkey]
+        f, r = v["facade"], v["floors"][floor]
+        grid = self.rd.rasters["bld_id"]
+        rays, blockers = [], {}
+        counts = dict.fromkeys(RAY_KINDS, 0)
+        for i, a in enumerate(v["az"]):
+            a = float(a)
+            in_win = -WINDOW_HALF <= float(angle_diff(a, f.normal_az)) < WINDOW_HALF
+            if bool(r["sea_vis"][i]):
+                kind, dist = "sea", float(r["sea_d"][i])
+            else:
+                kind, dist = RAY_KIND_BY_CLS.get(int(r["sky_cls"][i]), "land"), float(r["sky_d"][i])
+            bid = None
+            if kind == "building":
+                s, c = math.sin(math.radians(a)), math.cos(math.radians(a))
+                for step in (0.0, 2.5, -2.5, 5.0, -5.0):
+                    val = int(grid.nearest(f.x + (dist + step) * s, f.y + (dist + step) * c, fill=-1))
+                    if val != -1 and val != self.own_id:
+                        bid = val
+                        break
+            if in_win:
+                counts[kind] += 1
+                if bid is not None:
+                    e = blockers.setdefault(bid, {"id": bid, "deg": 0, "dist_m": dist})
+                    e["deg"] += 1
+                    e["dist_m"] = min(e["dist_m"], dist)
+            rays.append({"az": round(a, 1), "kind": kind, "d": round(min(dist, max_d)), "far": dist > max_d,
+                         "b": bid, "win": in_win})
+        return {"rays": rays, "counts": counts,
+                "blockers": sorted(blockers.values(), key=lambda e: (-e["deg"], e["dist_m"]))}
 
     def data_quality(self) -> dict:
         """Насколько можно доверять геометрии вокруг: доля зданий с известной высотой в 300 м."""

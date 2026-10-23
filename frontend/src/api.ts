@@ -222,7 +222,14 @@ export interface ViewData {
   suns: { month: number; azimuth: number; time: string; path: [number, number, number][] }[];
   eye_z: number;
   ground: number;
+  window?: { lat: number; lon: number };
+  rays?: { az: number; kind: RayKind; d: number; far: boolean; b: number | null; win: boolean }[];
+  blockers?: { id: number; deg: number; dist_m: number; levels: number | null; height_m: number; street: string | null; new: boolean; label: string; polygon: [number, number][] }[];
+  ray_counts?: Record<RayKind, number>;
+  rays_caption?: string;
 }
+
+export type RayKind = "sea" | "building" | "trees" | "land" | "mountain";
 
 export interface GeoData {
   id: string;

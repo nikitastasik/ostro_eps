@@ -196,6 +196,8 @@ table.t tr:hover td { background: #fbfcfe; }
 .need b { font-weight: 650; }
 
 /* ---------- карта ---------- */
+.rays-map { height: 380px; }
+.month-select { border: 1px solid var(--line); border-radius: 8px; padding: 4px 6px; background: #fff; font: inherit; font-size: 13px; }
 .map { width: 100%; height: 520px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); background: #dfe9f3; }
 .map.small { height: 360px; }
 .leaflet-container { font-family: var(--font); }

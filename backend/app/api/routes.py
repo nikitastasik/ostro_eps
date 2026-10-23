@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from .. import llm
 from ..agents import arbiter, concierge, orchestrator
 from ..agents.compiler import compile_text
+from ..agents.dedup import short_street
 from ..agents.interviewer import parse_with_llm, render_summary
 from ..config import settings
 from ..db import get_session
@@ -37,6 +38,7 @@ from ..models import (
     utcnow,
 )
 from ..nlp.answer_parser import parse_answer
+from ..nlp.ru import dist_text
 from ..region import get_region
 from ..tools.base import load_all
 from .common import check_token, conflict_dict, fact_dict, hotel_card, iso, make_token, question_dict, run_dict, rv_dict
@@ -255,7 +257,54 @@ def hotel_view(hotel_id: str, facade: str | None = None, floor: int | None = Non
                   "path": [[m, el, az] for m, el, az in s["path"]]} for s in suns],
         "eye_z": round(float(r["eye_z"]), 1), "ground": round(g.ground, 1),
         "classes": {"0": "рельеф", "1": "море", "2": "здания", "3": "деревья", "4": "горы"},
+        **_rays_payload(session, g, fkey, fl),
     }
+
+
+RAY_KIND_RU = {"sea": "море", "trees": "деревья", "land": "склоны и холмы", "mountain": "горы"}
+
+
+def _rays_payload(session: Session, g: HotelGeo, fkey: str, floor: int) -> dict:
+    """Лучи из окна для карты: куда упирается каждый луч, здания-заслоны с контурами и сводка по сектору окна."""
+    rd = get_region()
+    f = g.view[fkey]["facade"]
+    res = g.rays(fkey, floor)
+    wlon, wlat = rd.lonlat(f.x, f.y)
+    blockers = []
+    for b in res["blockers"][:8]:
+        if b["deg"] < 2:
+            continue
+        bid = b["id"]
+        if bid <= -1000:  # здание из сценария «построили дом»
+            ov = session.get(GeoOverride, -1000 - bid)
+            if ov is None:
+                continue
+            ring = [[lat, lon] for lon, lat in ov.geometry["coordinates"][0]]
+            levels, height, street, new = round(ov.height_m / 3), ov.height_m, None, True
+            what = f"новый дом в {dist_text(b['dist_m'])} от окна ({levels} эт.)"
+        else:
+            bld = rd.buildings[bid]
+            lon, lat = rd.lonlat(*np.asarray(bld.poly.exterior.coords).T)
+            ring = [[round(float(a), 6), round(float(o), 6)] for a, o in zip(lat, lon)]
+            c = bld.poly.centroid
+            street = rd.nearest_street(c.x, c.y)
+            levels, height, street, new = bld.levels, bld.height, short_street(street) if street else None, False
+            size = f"{levels} эт." if levels else f"≈{height:.0f} м"
+            what = f"дом в {dist_text(b['dist_m'])} от окна ({size}" + (f", {street})" if street else ")")
+        blockers.append({"id": bid, "deg": b["deg"], "dist_m": round(b["dist_m"]), "levels": levels,
+                         "height_m": round(float(height or 0), 1), "street": street, "new": new, "label": what,
+                         "polygon": ring})
+    parts = [(n, f"{n}° — {RAY_KIND_RU[k]}") for k, n in res["counts"].items() if n and k != "building"]
+    shown = 0
+    for b in blockers[:2]:
+        parts.append((b["deg"], f"{b['deg']}° — {b['label']}"))
+        shown += b["deg"]
+    if res["counts"]["building"] - shown > 0:
+        rest = res["counts"]["building"] - shown
+        parts.append((rest, f"{rest}° — " + ("другие дома" if shown else "дома")))
+    caption = "Из 120° обзора: " + ", ".join(t for _, t in sorted(parts, key=lambda p: -p[0]))
+    return {"window": {"lat": round(float(wlat), 6), "lon": round(float(wlon), 6)}, "rays": res["rays"],
+            "blockers": blockers, "ray_counts": res["counts"], "rays_caption": caption}
 
 
 class CollectBody(BaseModel):

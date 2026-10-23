@@ -9,6 +9,7 @@ export interface MapMarker {
   color?: string;
   title?: string;
   highlight?: boolean;
+  size?: number;
 }
 
 export interface MapLine {
@@ -18,6 +19,7 @@ export interface MapLine {
   dash?: string;
   title?: string;
   noFit?: boolean;
+  opacity?: number;
 }
 
 export interface MapPolygon {
@@ -37,6 +39,10 @@ interface Props {
   onMapClick?: (lat: number, lon: number) => void;
   className?: string;
   fitKey?: string;
+  /** Перерисовать слои при смене содержимого (а не только количества) */
+  drawKey?: string;
+  /** Показать окрестность точки вместо всех объектов */
+  focus?: { lat: number; lon: number; radius: number };
   center?: [number, number];
   zoom?: number;
 }
@@ -52,7 +58,7 @@ function loadSea() {
   return seaPromise;
 }
 
-export default function MapView({ markers = [], lines = [], polygons = [], arrows = [], onMarkerClick, onMapClick, className = "map", fitKey, center, zoom }: Props) {
+export default function MapView({ markers = [], lines = [], polygons = [], arrows = [], onMarkerClick, onMapClick, className = "map", fitKey, drawKey, focus, center, zoom }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layerRef = useRef<L.LayerGroup | null>(null);
@@ -64,7 +70,7 @@ export default function MapView({ markers = [], lines = [], polygons = [], arrow
 
   useEffect(() => {
     if (!ref.current || mapRef.current) return;
-    const map = L.map(ref.current, { zoomControl: true, attributionControl: true }).setView(center || [43.59, 39.73], zoom || 13);
+    const map = L.map(ref.current, { zoomControl: true, attributionControl: true, preferCanvas: true }).setView(center || [43.59, 39.73], zoom || 13);
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
       attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -99,7 +105,7 @@ export default function MapView({ markers = [], lines = [], polygons = [], arrow
     }
     for (const ln of lines) {
       const latlngs = ln.points.map(([lon, lat]) => [lat, lon] as [number, number]);
-      const pl = L.polyline(latlngs, { color: ln.color, weight: ln.weight ?? 4, dashArray: ln.dash, opacity: 0.9 });
+      const pl = L.polyline(latlngs, { color: ln.color, weight: ln.weight ?? 4, dashArray: ln.dash, opacity: ln.opacity ?? 0.9 });
       if (ln.title) pl.bindTooltip(ln.title, { sticky: true });
       pl.addTo(layer);
       if (!ln.noFit) latlngs.forEach((ll) => bounds.push(ll));
@@ -117,15 +123,22 @@ export default function MapView({ markers = [], lines = [], polygons = [], arrow
       }
     }
     for (const m of markers) {
+      const sz = m.size ?? 30;
       const icon = L.divIcon({
-        html: `<div class="mk ${m.highlight ? "hl" : ""}" style="background:${m.color || "#0a6cff"}">${m.label ?? ""}</div>`,
-        className: "", iconSize: [30, 30], iconAnchor: [15, 15],
+        html: `<div class="mk ${m.highlight ? "hl" : ""}" style="background:${m.color || "#0a6cff"}${m.size ? `;width:${sz}px;height:${sz}px;border-width:2px` : ""}">${m.label ?? ""}</div>`,
+        className: "", iconSize: [sz, sz], iconAnchor: [sz / 2, sz / 2],
       });
       const mk = L.marker([m.lat, m.lon], { icon, zIndexOffset: m.highlight ? 1000 : 0 });
       if (m.title) mk.bindTooltip(m.title, { direction: "top", offset: [0, -14] });
       mk.on("click", () => markerClickRef.current?.(m.id));
       mk.addTo(layer);
       bounds.push([m.lat, m.lon]);
+    }
+    if (focus) {
+      const dLat = focus.radius / 111320;
+      const dLon = focus.radius / (111320 * Math.cos((focus.lat * Math.PI) / 180));
+      bounds.length = 0;
+      bounds.push([focus.lat - dLat, focus.lon - dLon], [focus.lat + dLat, focus.lon + dLon]);
     }
     if (bounds.length && lastFit.current !== fitKey) {
       lastFit.current = fitKey;
@@ -138,7 +151,7 @@ export default function MapView({ markers = [], lines = [], polygons = [], arrow
     // перерисовка размеров (если контейнер появился из скрытого состояния)
     setTimeout(() => map.invalidateSize(), 50);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fitKey, JSON.stringify(markers.map((m) => [m.id, m.highlight, m.color])), lines.length, polygons.length, arrows.length]);
+  }, [fitKey, drawKey, JSON.stringify(markers.map((m) => [m.id, m.highlight, m.color])), lines.length, polygons.length, arrows.length]);
 
   return <div ref={ref} className={className} />;
 }

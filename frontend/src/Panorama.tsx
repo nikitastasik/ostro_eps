@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, ViewData } from "./api";
+import RaysMap from "./RaysMap";
 import { ErrorBox, Spinner } from "./ui";
 
 const CLS_COLOR: Record<number, string> = { 0: "#c9b48a", 1: "#2f86e6", 2: "#8a93a3", 3: "#5fae63", 4: "#8d76b8" };
@@ -15,6 +16,7 @@ function diff(a: number, b: number) {
 export default function Panorama({ hotelId, initialFacade, initialFloor }: { hotelId: string; initialFacade?: string; initialFloor?: number }) {
   const [facade, setFacade] = useState<string | undefined>(initialFacade);
   const [floor, setFloor] = useState<number | undefined>(initialFloor);
+  const [month, setMonth] = useState<number>(new Date().getMonth() + 1);
   const [data, setData] = useState<ViewData | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [loading, setLoading] = useState(false);
@@ -88,7 +90,10 @@ export default function Panorama({ hotelId, initialFacade, initialFloor }: { hot
         <div className="row" style={{ minWidth: 240 }}>
           <span className="small muted nowrap">Этаж {data.floor}</span>
           <input type="range" min={0} max={data.floors.length - 1} step={1} value={Math.max(0, data.floors.indexOf(data.floor))}
-            onChange={(e) => setFloor(data.floors[Number(e.target.value)])} />
+            onChange={(e) => setFloor(data.floors[Number(e.target.value)])} aria-label="Этаж" />
+          <select className="month-select" value={month} onChange={(e) => setMonth(Number(e.target.value))} aria-label="Месяц заката">
+            {MONTHS.map((m, i) => <option key={m} value={i + 1}>закат: {m}</option>)}
+          </select>
           {loading && <Spinner />}
         </div>
       </div>
@@ -114,7 +119,8 @@ export default function Panorama({ hotelId, initialFacade, initialFloor }: { hot
         {/* траектории Солнца перед закатом */}
         {view.sunsets.map((s) => s.pts.length > 1 ? (
           <g key={s.month}>
-            <polyline points={s.pts.map((p) => `${p.x},${p.y}`).join(" ")} fill="none" stroke={MONTH_COLORS[s.month - 1]} strokeWidth={s.seen ? 2.4 : 1.4} strokeDasharray={s.seen ? undefined : "4 4"} opacity={s.seen ? 0.95 : 0.55} />
+            <polyline points={s.pts.map((p) => `${p.x},${p.y}`).join(" ")} fill="none" stroke={MONTH_COLORS[s.month - 1]}
+              strokeWidth={s.month === month ? 4 : s.seen ? 2.4 : 1.4} strokeDasharray={s.seen ? undefined : "4 4"} opacity={s.seen || s.month === month ? 0.95 : 0.55} />
             {(() => {
               const last = s.pts[s.pts.length - 1];
               return (
@@ -164,6 +170,9 @@ export default function Panorama({ hotelId, initialFacade, initialFloor }: { hot
           ? <>Закат виден: {seenMonths.map((s) => `${MONTHS[s.month - 1]}${s.overSea ? " (над морем)" : ""}`).join(", ")}.</>
           : <>Закат из этого окна не виден.</>}
       </p>
+      <h3 className="mt">Куда смотрит окно: лучи обзора на карте</h3>
+      <p className="small muted">Из окна выбранной стороны и этажа — 120 лучей через 1°: каждый идёт до того, во что упирается взгляд. Красным подсвечены дома, которые закрывают вид; оранжевый пунктир — где садится солнце в выбранном месяце.</p>
+      <RaysMap data={data} month={month} />
     </div>
   );
 }
