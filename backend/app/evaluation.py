@@ -127,6 +127,25 @@ def eval_sun() -> dict:
             "max_azimuth_error_deg": max(r["azimuth_error_deg"] for r in rows)}
 
 
+def eval_geo_gold(session: Session) -> dict:
+    """Точность геохарактеристик против ручной разметки data/eval/geo_gold.yaml."""
+    rows = _load("geo_gold.yaml") or []
+    total = correct = 0
+    errors = []
+    for r in rows:
+        rv = session.get(ResolvedValue, (r["hotel_id"], r["char_key"]))
+        got = (rv.value or {}) if rv else {}
+        for f, exp in (r.get("expect") or {}).items():
+            total += 1
+            g = got.get(f)
+            ok = (abs(float(g) - float(exp)) <= 2) if f == "min_floor" and g is not None and exp is not None else _same(exp, g)
+            correct += bool(ok)
+            if not ok:
+                errors.append({"hotel_id": r["hotel_id"], "char_key": r["char_key"], "field": f, "expected": exp, "got": g})
+    return {"labels": len(rows), "fields": total, "accuracy": round(correct / total, 3) if total else None,
+            "errors": errors[:12], "note": "разметка заполняется командой по фото и панорамам" if not rows else ""}
+
+
 def compute_metrics(session: Session, force: bool = False) -> dict:
     with _lock:
         if not force and _cache["data"] is not None and time.time() - _cache["at"] < 30:
@@ -196,6 +215,7 @@ def compute_metrics(session: Session, force: bool = False) -> dict:
                  "answers_dev": eval_answers("hotelier_answers_dev.yaml"), "queries_dev": eval_queries("queries_dev.yaml"),
                  "answers_holdout": eval_answers("hotelier_answers_holdout.yaml"),
                  "queries_holdout": eval_queries("queries_holdout.yaml"), "sun": eval_sun(),
+                 "geo_gold": eval_geo_gold(session),
                  "levels_imputation": region_stats.get("levels_imputation")},
         "data_sources": {"buildings": region_stats.get("buildings"), "height_sources": region_stats.get("height_sources"),
                          "pois": region_stats.get("pois"), "roads": region_stats.get("roads")},

@@ -167,21 +167,33 @@ def _run_actualize(session: Session, run: AgentRun, logger: RunLogger) -> str:
 
 def _run_scenario(session: Session, run: AgentRun, logger: RunLogger) -> str:
     rd = get_region()
-    ov = session.get(GeoOverride, run.params["override_id"])
-    rd.apply_building_override(ov.id, ov.geometry["coordinates"][0], ov.height_m)
-    ring = np.asarray(ov.geometry["coordinates"][0], dtype=float)
-    cx, cy = rd.xy(float(ring[:, 0].mean()), float(ring[:, 1].mean()))
     radius = float(run.params.get("radius_m", 1200))
+    reset_ids = run.params.get("reset_ids")
+    if reset_ids:
+        overrides = [session.get(GeoOverride, i) for i in reset_ids]
+        what = f"снесены построенные здания ({len(overrides)})"
+    else:
+        ov = session.get(GeoOverride, run.params["override_id"])
+        rd.apply_building_override(ov.id, ov.geometry["coordinates"][0], ov.height_m)
+        overrides = [ov]
+        what = f"«{ov.label}» ({ov.height_m:.0f} м)"
+    centres = []
+    for ov in overrides:
+        if ov is None:
+            continue
+        ring = np.asarray(ov.geometry["coordinates"][0], dtype=float)
+        cx, cy = rd.xy(float(ring[:, 0].mean()), float(ring[:, 1].mean()))
+        centres.append((float(cx), float(cy)))
     hotels = []
     for h in session.scalars(select(Hotel)):
         b = h.building or {}
-        if b.get("x") is None:
+        if b.get("x") is None or not centres:
             continue
-        d = float(np.hypot(b["x"] - float(cx), b["y"] - float(cy)))
+        d = min(float(np.hypot(b["x"] - cx, b["y"] - cy)) for cx, cy in centres)
         if d <= radius:
             hotels.append((d, h))
     hotels.sort(key=lambda t: t[0])
-    logger.step("Оркестратор", "plan", f"Изменение среды: «{ov.label}» ({ov.height_m:.0f} м). "
+    logger.step("Оркестратор", "plan", f"Изменение среды: {what}. "
                 f"Пересчитываю виды и шум для {len(hotels)} отелей в радиусе {radius:.0f} м",
                 payload={"hotels": [h.id for _, h in hotels]})
     changed = 0
@@ -189,7 +201,8 @@ def _run_scenario(session: Session, run: AgentRun, logger: RunLogger) -> str:
         before = {k: (session.get(ResolvedValue, (h.id, k)).summary if session.get(ResolvedValue, (h.id, k)) else "")
                   for k in VIEW_KEYS}
         quiet = RunLogger(session, run, store=False)
-        collect_hotel(session, h, VIEW_KEYS, quiet, reason="change:building", allow_questions=False)
+        collect_hotel(session, h, VIEW_KEYS, quiet, reason="change:reset" if reset_ids else "change:building",
+                      allow_questions=False)
         diffs = []
         for k in VIEW_KEYS:
             rv = session.get(ResolvedValue, (h.id, k))

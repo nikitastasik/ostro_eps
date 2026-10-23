@@ -85,3 +85,35 @@ def test_metrics(client):
     m = client.get("/api/metrics").json()
     assert 0 < m["coverage"] <= 1
     assert m["eval"]["sun"]["max_azimuth_error_deg"] < 0.5
+
+
+def test_conflict_clarification_cycle(client):
+    token = client.post("/api/auth/login", json={"login": "hotelier", "password": "hotelier123"}).json()["token"]
+    auth = {"Authorization": f"Bearer {token}"}
+    # отель, где расчёт видит море только с 4-го этажа и выше (допуск сравнения — ±2 этажа) и ждёт подтверждения
+    qs = client.get("/api/questions?status=open&limit=2000").json()["items"]
+    target = None
+    for q in qs:
+        if q["char_keys"] != ["sea_view"] or q["reason"] != "verify":
+            continue
+        card = client.get(f"/api/hotels/{q['hotel_id']}").json()
+        sea = next(i for g in card["groups"] for i in g["items"] if i["key"] == "sea_view")
+        if sea["value"] and sea["value"].get("available") and (sea["value"].get("min_floor") or 1) >= 4:
+            target = (q, sea["value"]["min_floor"])
+            break
+    assert target, "в seed должен быть отель с видом на море только с верхних этажей"
+    q, floor = target
+    # отельер приукрашивает → противоречие и уточняющий вопрос
+    client.post(f"/api/hotelier/questions/{q['id']}/answer", json={"text": "Море видно из всех номеров!"}, headers=auth)
+    conflicts = [c for c in client.get("/api/conflicts?status=open&limit=500").json()["items"]
+                 if c["hotel_id"] == q["hotel_id"] and c["char_key"] == "sea_view"]
+    assert conflicts
+    clar = [x for x in client.get(f"/api/questions?status=open&hotel_id={q['hotel_id']}").json()["items"]
+            if x["reason"] == "conflict" and "sea_view" in x["char_keys"]]
+    assert clar, "арбитр должен задать уточняющий вопрос"
+    # отельер уточняет — противоречие снимается
+    client.post(f"/api/hotelier/questions/{clar[0]['id']}/answer", json={"text": f"Да, море видно начиная с {floor} этажа"},
+                headers=auth)
+    still = [c for c in client.get("/api/conflicts?status=open&limit=500").json()["items"]
+             if c["hotel_id"] == q["hotel_id"] and c["char_key"] == "sea_view"]
+    assert not still

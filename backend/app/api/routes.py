@@ -568,8 +568,7 @@ def scenario_reset(session: Session = Depends(get_session)):
     get_region().reset_overrides()
     run = None
     if ids:
-        run = _enqueue(session, "collect_all", char_keys=orchestrator.VIEW_KEYS, trigger="change:reset",
-                       params={"note": "откат сценариев: пересчёт видов"})
+        run = _enqueue(session, "scenario", trigger="change:reset", params={"reset_ids": ids, "radius_m": 1200})
     return {"reset": ids, "run": run_dict(run) if run else None}
 
 

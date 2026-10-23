@@ -78,6 +78,12 @@ export default function MetricsPage() {
                   <div className="small muted mt-s">{d.eval.levels_imputation.dsm_check?.note}</div>
                 </>
               )}
+              <h3 className="mt">Геохарактеристики против ручной разметки</h3>
+              {d.eval.geo_gold?.labels ? (
+                <div className="small">{d.eval.geo_gold.labels} отелей, {d.eval.geo_gold.fields} полей · точность <b>{pct(d.eval.geo_gold.accuracy, 1)}</b></div>
+              ) : (
+                <div className="small muted">Разметки пока нет: файл <span className="mono">data/eval/geo_gold.yaml</span> заполняется по фото номеров и панорамам.</div>
+              )}
               <h3 className="mt">Данные</h3>
               <div className="small">Зданий в модели застройки: {d.data_sources.buildings?.toLocaleString("ru-RU")} · источник высоты: {Object.entries(d.data_sources.height_sources || {}).map(([k, v]) => `${k} ${(v as number).toLocaleString("ru-RU")}`).join(", ")} · POI {d.data_sources.pois} · дорог {d.data_sources.roads?.toLocaleString("ru-RU")}</div>
             </div>

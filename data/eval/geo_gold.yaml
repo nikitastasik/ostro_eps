@@ -1,0 +1,10 @@
+# Ручная разметка геохарактеристик (заполняет команда по фото номеров, панорамам и отзывам).
+# Метрика «точность характеристик» на странице /metrics считается по этому файлу:
+# available — точное совпадение, min_floor — допуск ±2 этажа.
+#
+# Пример записи:
+# - hotel_id: osm-w51847420          # id отеля из адреса карточки /hotel/<id>
+#   char_key: sea_view               # sea_view | sunset_view | mountain_view | beach_access | quietness
+#   expect: {available: true, min_floor: 1}
+#   evidence: "фото номеров на сайте отеля, отзыв от 2026-08"
+[]
