@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
 
 from sqlalchemy import select
@@ -20,6 +21,8 @@ from ..knowledge.registry import all_specs
 from ..models import Hotel, Question, ResolvedValue, SearchLog
 from ..nlp.query_parser import Criterion, ParsedQuery, criteria_from_dicts, parse_query
 from ..nlp.ru import dec, dist_text, walk_min_text, walk_to_text
+
+log = logging.getLogger(__name__)
 
 PRIOR = 0.3  # ожидание совпадения, когда данных нет
 EXAMPLES = [  # примеры запросов на главной; они же — «демо-спрос» для пользы вопросов отельерам
@@ -87,7 +90,12 @@ def llm_parse(text: str, specs: dict[str, dict]) -> ParsedQuery | None:
 
 def understand(text: str, specs: dict[str, dict]) -> ParsedQuery:
     rules = parse_query(text, specs)
-    via_llm = llm_parse(text, specs)
+    try:
+        via_llm = llm_parse(text, specs)
+    except (AttributeError, TypeError, ValueError, KeyError) as exc:
+        # модель вернула JSON не той формы — разбираем правилами, а не отвечаем гостю ошибкой
+        log.warning("LLM вернула неожиданный разбор запроса: %s", exc)
+        via_llm = None
     if via_llm is not None:
         return via_llm
     return rules

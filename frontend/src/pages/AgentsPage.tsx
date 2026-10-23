@@ -82,7 +82,7 @@ export default function AgentsPage() {
         <div className="grid three mt">
           {o.agents.map((a: any) => (
             <div key={a.name} className="card agent-card">
-              <h3><Icon name="agents" /> {a.name}</h3>
+              <h2 className="h3"><Icon name="agents" /> {a.name}</h2>
               {a.role && <p className="small muted">{a.role}</p>}
               {a.tools.map((t: any) => (
                 <div key={t.name} className="small mt-s"><span className="mono tiny">{t.name}</span> — {t.title}<div className="tiny muted">{t.sources.join(" · ")}</div></div>

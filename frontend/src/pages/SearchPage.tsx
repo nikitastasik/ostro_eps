@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api, Criterion, Meta, SearchResponse, SearchResult } from "../api";
 import MapView from "../MapView";
@@ -92,19 +92,22 @@ export default function SearchPage({ meta }: { meta: Meta | null }) {
   const [loading, setLoading] = useState(false);
   const [hl, setHl] = useState<string | null>(null);
   const nav = useNavigate();
+  const seq = useRef(0);
 
   const run = async (q: string, criteria?: Criterion[]) => {
     if (!q.trim() && !criteria) return;
+    const n = ++seq.current; // ответ на устаревший запрос не перезаписывает свежую выдачу
     setLoading(true);
     setError(null);
     try {
       const r = await api.search(q, criteria);
+      if (n !== seq.current) return;
       setRes(r);
       setParams(q ? { q } : {}, { replace: true });
     } catch (e) {
-      setError(e);
+      if (n === seq.current) setError(e);
     } finally {
-      setLoading(false);
+      if (n === seq.current) setLoading(false);
     }
   };
 

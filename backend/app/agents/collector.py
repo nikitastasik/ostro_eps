@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import logging
 import time
 
 from sqlalchemy import select
@@ -18,6 +19,8 @@ from ..nlp.ru import dec, lower_first
 from ..tools.base import get_tool
 from . import arbiter
 from .context import HotelContext
+
+log = logging.getLogger(__name__)
 
 
 def _hotelier_known(ctx: HotelContext, key: str) -> tuple[bool, bool]:
@@ -130,7 +133,8 @@ def collect(ctx: HotelContext, spec: dict, run_id: int | None, logger, reason: s
         try:
             res = tool.fn(ctx, params)
         except Exception as exc:  # noqa: BLE001
-            logger.step(tool.agent, "error", f"{tool.title}: ошибка {exc.__class__.__name__}: {exc}", char_key=key)
+            log.warning("Инструмент %s упал: %s", name, exc)
+            logger.step(tool.agent, "error", f"{tool.title}: ошибка {exc.__class__.__name__}, подробности в логах", char_key=key)
             continue
         ms = int((time.perf_counter() - t0) * 1000)
         if res.status != "ok" or res.value is None:

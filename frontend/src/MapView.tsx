@@ -1,6 +1,16 @@
 import L from "leaflet";
 import { useEffect, useRef } from "react";
 
+/** Подсказка Leaflet текстом, а не HTML: названия отелей приходят из OSM и от отельеров. */
+const tip = (text: string) => {
+  const el = document.createElement("span");
+  el.textContent = text;
+  return el;
+};
+const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+/** В style маркера попадает только цвет вида #abc / #aabbcc, иначе — цвет по умолчанию. */
+const safeColor = (c: string | undefined, fallback: string) => (c && /^#[0-9a-f]{3,8}$/i.test(c) ? c : fallback);
+
 export interface MapMarker {
   id: string;
   lat: number;
@@ -99,37 +109,37 @@ export default function MapView({ markers = [], lines = [], polygons = [], arrow
     for (const p of polygons) {
       const latlngs = p.points.map(([lon, lat]) => [lat, lon] as [number, number]);
       const poly = L.polygon(latlngs, { color: p.color, weight: p.weight ?? 2, fillColor: p.fill || p.color, fillOpacity: 0.35 });
-      if (p.title) poly.bindTooltip(p.title);
+      if (p.title) poly.bindTooltip(tip(p.title));
       poly.addTo(layer);
       latlngs.forEach((ll) => bounds.push(ll));
     }
     for (const ln of lines) {
       const latlngs = ln.points.map(([lon, lat]) => [lat, lon] as [number, number]);
       const pl = L.polyline(latlngs, { color: ln.color, weight: ln.weight ?? 4, dashArray: ln.dash, opacity: ln.opacity ?? 0.9 });
-      if (ln.title) pl.bindTooltip(ln.title, { sticky: true });
+      if (ln.title) pl.bindTooltip(tip(ln.title), { sticky: true });
       pl.addTo(layer);
       if (!ln.noFit) latlngs.forEach((ll) => bounds.push(ll));
     }
     for (const a of arrows) {
       const html = `<div style="transform: rotate(${a.az}deg); width:34px; height:34px; display:grid; place-items:center">
-        <svg width="26" height="26" viewBox="0 0 24 24"><path d="M12 2 19 20 12 16 5 20z" fill="${a.color}" stroke="white" stroke-width="1.5"/></svg></div>`;
+        <svg width="26" height="26" viewBox="0 0 24 24"><path d="M12 2 19 20 12 16 5 20z" fill="${safeColor(a.color, "#2d3137")}" stroke="white" stroke-width="1.5"/></svg></div>`;
       const icon = L.divIcon({ html, className: "", iconSize: [34, 34], iconAnchor: [17, 17] });
       const m = L.marker([a.lat, a.lon], { icon, interactive: !!a.title, keyboard: !!a.title, title: a.title || "" });
-      if (a.title) m.bindTooltip(a.title, { direction: "top" });
+      if (a.title) m.bindTooltip(tip(a.title), { direction: "top" });
       m.addTo(layer);
       if (a.label) {
-        const t = L.divIcon({ html: `<div style="font-weight:800;font-size:12px;color:#2d3137;text-shadow:0 0 3px white,0 0 3px white,0 0 3px white">${a.label}</div>`, className: "", iconSize: [40, 14], iconAnchor: [-12, 7] });
-        L.marker([a.lat, a.lon], { icon: t, interactive: false }).addTo(layer);
+        const t = L.divIcon({ html: `<div style="font-weight:800;font-size:12px;color:#2d3137;text-shadow:0 0 3px white,0 0 3px white,0 0 3px white">${esc(a.label)}</div>`, className: "", iconSize: [40, 14], iconAnchor: [-12, 7] });
+        L.marker([a.lat, a.lon], { icon: t, interactive: false, keyboard: false }).addTo(layer);
       }
     }
     for (const m of markers) {
       const sz = m.size ?? 30;
       const icon = L.divIcon({
-        html: `<div class="mk ${m.highlight ? "hl" : ""}" style="background:${m.color || "#0e41d2"}${m.size ? `;width:${sz}px;height:${sz}px;border-width:2px` : ""}">${m.label ?? ""}</div>`,
+        html: `<div class="mk ${m.highlight ? "hl" : ""}" style="background:${safeColor(m.color, "#0e41d2")}${m.size ? `;width:${sz}px;height:${sz}px;border-width:2px` : ""}">${esc(m.label ?? "")}</div>`,
         className: "", iconSize: [sz, sz], iconAnchor: [sz / 2, sz / 2],
       });
       const mk = L.marker([m.lat, m.lon], { icon, zIndexOffset: m.highlight ? 1000 : 0, title: m.title || m.label || "" });
-      if (m.title) mk.bindTooltip(m.title, { direction: "top", offset: [0, -14] });
+      if (m.title) mk.bindTooltip(tip(m.title), { direction: "top", offset: [0, -14] });
       mk.on("click", () => markerClickRef.current?.(m.id));
       mk.addTo(layer);
       bounds.push([m.lat, m.lon]);
@@ -153,5 +163,5 @@ export default function MapView({ markers = [], lines = [], polygons = [], arrow
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fitKey, drawKey, JSON.stringify(markers.map((m) => [m.id, m.highlight, m.color])), lines.length, polygons.length, arrows.length]);
 
-  return <div ref={ref} className={className} />;
+  return <div ref={ref} className={className} role="region" aria-label="Карта" />;
 }

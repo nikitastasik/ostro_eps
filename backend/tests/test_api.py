@@ -277,3 +277,49 @@ def test_tour_and_demo_reset(client):
     assert after["overrides"] == [] and after["questions"] == base["questions"] and after["conflicts"] == base["conflicts"]
     assert client.get(f"/api/hotels/{sh}/view", params=window).json()["ray_counts"] == rays0
     assert client.get("/api/tour").json() == t
+
+
+def test_inputs_are_bounded(client):
+    assert client.post("/api/search", json={"query": "т" * 5000}).status_code == 422
+    assert client.post("/api/search", json={"query": "тихо", "limit": 100000}).status_code == 422
+    assert client.get("/api/changes", params={"limit": 10_000_000}).status_code == 422
+
+
+def test_demo_actions_can_be_disabled(client, monkeypatch):
+    from dataclasses import replace
+
+    from app.api import routes
+
+    monkeypatch.setattr(routes, "settings", replace(routes.settings, demo_actions=False))
+    assert client.post("/api/demo/reset").status_code == 403
+    assert client.post("/api/agents/age", json={"days": 10}).status_code == 403
+    assert client.delete("/api/scenarios").status_code == 403
+    assert client.post("/api/characteristics", json={"text": "аптека рядом"}).status_code == 403
+    assert client.post("/api/conflicts/1/resolve", json={"keep_fact_id": 1}).status_code == 403
+    assert client.post("/api/agents/actualize").status_code == 403
+
+
+def test_run_is_claimed_once(client):
+    from app.agents.orchestrator import claim_run, create_run
+    from app.db import SessionLocal
+
+    with SessionLocal() as s:
+        run = create_run(s, "actualize", trigger="manual")
+        s.commit()
+        assert claim_run(s, run.id) is True
+        assert claim_run(s, run.id) is False
+
+
+def test_run_error_hides_exception_text(client, monkeypatch):
+    from app.agents import orchestrator
+    from app.db import SessionLocal
+    from app.models import AgentRun
+
+    def boom(*a, **kw):
+        raise RuntimeError("postgresql://app:secret@db/ostrovok")
+
+    monkeypatch.setitem(orchestrator.HANDLERS, "actualize", boom)
+    with SessionLocal() as s:
+        run = orchestrator.run_now(s, "actualize", trigger="manual")
+        assert run.status == "error" and "secret" not in run.error and "RuntimeError" in run.error
+        assert s.get(AgentRun, run.id).status == "error"

@@ -8,8 +8,8 @@ import threading
 from collections import OrderedDict
 
 import numpy as np
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 
@@ -48,12 +48,17 @@ router = APIRouter()
 
 def _enqueue(session: Session, kind: str, **kw) -> AgentRun:
     run = orchestrator.create_run(session, kind, **kw)
-    session.commit()
-    if not settings.worker_enabled:
-        orchestrator.execute_run(run.id)
-        session.expire_all()
-        run = session.get(AgentRun, run.id)
-    return run
+    if settings.worker_enabled:
+        session.commit()
+        return run
+    orchestrator.execute_now(session, run)
+    return session.get(AgentRun, run.id)
+
+
+def demo_actions_allowed() -> None:
+    """Изменяющие действия без входа (демо): на публичном стенде выключаются DEMO_ACTIONS=false."""
+    if not settings.demo_actions:
+        raise HTTPException(403, "Демо-действия выключены на этом стенде (DEMO_ACTIONS=false)")
 
 
 def _hotel_or_404(session: Session, hotel_id: str) -> Hotel:
@@ -106,7 +111,7 @@ def region_sea():
 
 # =============================================================== отели
 @router.get("/api/hotels")
-def hotels(q: str = "", limit: int = 400, session: Session = Depends(get_session)):
+def hotels(q: str = "", limit: int = Query(400, ge=1, le=5000), session: Session = Depends(get_session)):
     stmt = select(Hotel).order_by(Hotel.name)
     rows = list(session.scalars(stmt))
     if q:
@@ -374,7 +379,7 @@ class CollectBody(BaseModel):
     char_keys: list[str] | None = None
 
 
-@router.post("/api/hotels/{hotel_id}/collect")
+@router.post("/api/hotels/{hotel_id}/collect", dependencies=[Depends(demo_actions_allowed)])
 def hotel_collect(hotel_id: str, body: CollectBody, session: Session = Depends(get_session)):
     _hotel_or_404(session, hotel_id)
     run = _enqueue(session, "collect", hotel_id=hotel_id, char_keys=body.char_keys or [], trigger="manual")
@@ -383,7 +388,12 @@ def hotel_collect(hotel_id: str, body: CollectBody, session: Session = Depends(g
 
 # =============================================================== запуски агентов
 @router.get("/api/runs")
-def runs(hotel_id: str | None = None, kind: str | None = None, limit: int = 30, session: Session = Depends(get_session)):
+def runs(
+    hotel_id: str | None = None,
+    kind: str | None = None,
+    limit: int = Query(30, ge=1, le=5000),
+    session: Session = Depends(get_session),
+):
     stmt = select(AgentRun).order_by(desc(AgentRun.id)).limit(limit)
     if hotel_id:
         stmt = stmt.where(AgentRun.hotel_id == hotel_id)
@@ -407,9 +417,9 @@ def run_detail(run_id: int, after: int = -1, session: Session = Depends(get_sess
 
 # =============================================================== поиск и сравнение
 class SearchBody(BaseModel):
-    query: str = ""
-    criteria: list[dict] | None = None
-    limit: int = 30
+    query: str = Field("", max_length=500)
+    criteria: list[dict] | None = Field(None, max_length=30)
+    limit: int = Field(30, ge=1, le=500)
 
 
 @router.post("/api/search")
@@ -484,7 +494,7 @@ def characteristics(session: Session = Depends(get_session)):
 
 
 class CompileBody(BaseModel):
-    text: str
+    text: str = Field(max_length=1000)
 
 
 @router.post("/api/characteristics/compile")
@@ -496,11 +506,11 @@ def characteristic_compile(body: CompileBody, session: Session = Depends(get_ses
 
 
 class CreateBody(BaseModel):
-    text: str
+    text: str = Field(max_length=1000)
     spec: dict | None = None
 
 
-@router.post("/api/characteristics")
+@router.post("/api/characteristics", dependencies=[Depends(demo_actions_allowed)])
 def characteristic_create(body: CreateBody, session: Session = Depends(get_session)):
     existing = set(all_specs(session, enabled_only=False))
     if body.spec:
@@ -535,7 +545,7 @@ def characteristic_create(body: CreateBody, session: Session = Depends(get_sessi
     return {"spec": spec, "method": method, "run": run_dict(run)}
 
 
-@router.post("/api/characteristics/{key}/toggle")
+@router.post("/api/characteristics/{key}/toggle", dependencies=[Depends(demo_actions_allowed)])
 def characteristic_toggle(key: str, session: Session = Depends(get_session)):
     row = session.get(Characteristic, key)
     if row is None:
@@ -546,7 +556,7 @@ def characteristic_toggle(key: str, session: Session = Depends(get_session)):
     return {"key": key, "enabled": row.enabled}
 
 
-@router.post("/api/characteristics/{key}/collect")
+@router.post("/api/characteristics/{key}/collect", dependencies=[Depends(demo_actions_allowed)])
 def characteristic_collect(key: str, session: Session = Depends(get_session)):
     if get_spec(session, key) is None:
         raise HTTPException(404, "Нет такой характеристики")
@@ -559,7 +569,7 @@ def characteristic_collect(key: str, session: Session = Depends(get_session)):
 def questions(
     status: str | None = None,
     hotel_id: str | None = None,
-    limit: int = 100,
+    limit: int = Query(100, ge=1, le=5000),
     order: str | None = None,
     session: Session = Depends(get_session),
 ):
@@ -579,7 +589,7 @@ def questions(
     return {"items": [question_dict(q, session) for q in session.scalars(stmt)]}
 
 
-@router.post("/api/questions/{qid}/simulate")
+@router.post("/api/questions/{qid}/simulate", dependencies=[Depends(demo_actions_allowed)])
 def question_simulate(qid: int, session: Session = Depends(get_session)):
     q = session.get(Question, qid)
     if q is None or q.status != "open":
@@ -593,7 +603,7 @@ def question_simulate(qid: int, session: Session = Depends(get_session)):
 
 
 @router.get("/api/conflicts")
-def conflicts(status: str | None = None, limit: int = 100, session: Session = Depends(get_session)):
+def conflicts(status: str | None = None, limit: int = Query(100, ge=1, le=5000), session: Session = Depends(get_session)):
     stmt = select(Conflict).order_by(desc(Conflict.id)).limit(limit)
     if status:
         stmt = stmt.where(Conflict.status == status)
@@ -605,7 +615,7 @@ class ResolveBody(BaseModel):
     note: str = ""
 
 
-@router.post("/api/conflicts/{cid}/resolve")
+@router.post("/api/conflicts/{cid}/resolve", dependencies=[Depends(demo_actions_allowed)])
 def conflict_resolve(cid: int, body: ResolveBody, session: Session = Depends(get_session)):
     c = session.get(Conflict, cid)
     if c is None or c.status != "open":
@@ -629,7 +639,7 @@ def conflict_resolve(cid: int, body: ResolveBody, session: Session = Depends(get
 
 
 @router.get("/api/changes")
-def changes(limit: int = 50, session: Session = Depends(get_session)):
+def changes(limit: int = Query(50, ge=1, le=5000), session: Session = Depends(get_session)):
     specs = all_specs(session, enabled_only=False)
     out = []
     for c in session.scalars(select(Change).order_by(desc(Change.id)).limit(limit)):
@@ -829,7 +839,7 @@ def _built_for(session: Session) -> dict | None:
     return None
 
 
-@router.post("/api/demo/reset")
+@router.post("/api/demo/reset", dependencies=[Depends(demo_actions_allowed)])
 def demo_reset(session: Session = Depends(get_session)):
     """Вернуть демо в исходное состояние: знания из сида, без добавленных характеристик и построенных домов."""
     from ..seed import reset_demo
@@ -853,17 +863,17 @@ def evaluation_cache_reset() -> None:
         evaluation._cache.update({"at": 0.0, "data": None})
 
 
-@router.post("/api/agents/actualize")
+@router.post("/api/agents/actualize", dependencies=[Depends(demo_actions_allowed)])
 def agents_actualize(session: Session = Depends(get_session)):
     return run_dict(_enqueue(session, "actualize", trigger="manual", params={"limit": 50}))
 
 
 class AgeBody(BaseModel):
-    days: int = 200
+    days: int = Field(200, ge=1, le=3650)
     char_keys: list[str] | None = None
 
 
-@router.post("/api/agents/age")
+@router.post("/api/agents/age", dependencies=[Depends(demo_actions_allowed)])
 def agents_age(body: AgeBody, session: Session = Depends(get_session)):
     """Демо: «состарить» данные, чтобы увидеть, как агенты находят и перепроверяют устаревшее."""
     delta = dt.timedelta(days=body.days)
@@ -901,7 +911,7 @@ class BuildingScenario(BaseModel):
     floor: int | None = None
 
 
-@router.post("/api/scenarios/building")
+@router.post("/api/scenarios/building", dependencies=[Depends(demo_actions_allowed)])
 def scenario_building(body: BuildingScenario, session: Session = Depends(get_session)):
     rd = get_region()
     x, y = rd.xy(body.lon, body.lat)
@@ -932,7 +942,7 @@ def scenario_building(body: BuildingScenario, session: Session = Depends(get_ses
     return {"override": {"id": ov.id, "geometry": ov.geometry, "height_m": ov.height_m, "label": ov.label}, "run": run_dict(run)}
 
 
-@router.delete("/api/scenarios")
+@router.delete("/api/scenarios", dependencies=[Depends(demo_actions_allowed)])
 def scenario_reset(session: Session = Depends(get_session)):
     ids = [o.id for o in session.scalars(select(GeoOverride).where(GeoOverride.active.is_(True)))]
     for o in session.scalars(select(GeoOverride)):
@@ -947,8 +957,8 @@ def scenario_reset(session: Session = Depends(get_session)):
 
 # =============================================================== кабинет отельера
 class LoginBody(BaseModel):
-    login: str
-    password: str
+    login: str = Field(max_length=200)
+    password: str = Field(max_length=200)
 
 
 @router.post("/api/auth/login")
@@ -1039,7 +1049,7 @@ def hotelier_hotel(hotel_id: str, user: str = Depends(check_token), session: Ses
 
 
 class AnswerBody(BaseModel):
-    text: str
+    text: str = Field(max_length=4000)
     preview: bool = False
 
 
@@ -1073,9 +1083,7 @@ def hotelier_answer(qid: int, body: AnswerBody, user: str = Depends(check_token)
         trigger="hotelier",
         params={"question_id": q.id, "text": body.text, "answered_by": "hotelier"},
     )
-    session.commit()
-    orchestrator.execute_run(run.id)
-    session.expire_all()
+    orchestrator.execute_now(session, run)
     run = session.get(AgentRun, run.id)
     steps = list(session.scalars(select(AgentStep).where(AgentStep.run_id == run.id).order_by(AgentStep.idx)))
     return {"run": run_dict(run, steps), "question": question_dict(session.get(Question, qid), session)}
@@ -1125,7 +1133,7 @@ def hotelier_confirm(hotel_id: str, key: str, user: str = Depends(check_token), 
 
 
 class CorrectBody(BaseModel):
-    text: str
+    text: str = Field(max_length=4000)
 
 
 @router.post("/api/hotelier/hotels/{hotel_id}/correct/{key}")
@@ -1154,9 +1162,7 @@ def hotelier_correct(
         trigger="hotelier_correction",
         params={"question_id": q.id, "text": body.text, "answered_by": "hotelier_confirmed"},
     )
-    session.commit()
-    orchestrator.execute_run(run.id)
-    session.expire_all()
+    orchestrator.execute_now(session, run)
     rv = session.get(ResolvedValue, (h.id, key))
     steps = list(session.scalars(select(AgentStep).where(AgentStep.run_id == run.id).order_by(AgentStep.idx)))
     return {"value": rv_dict(rv, spec), "run": run_dict(session.get(AgentRun, run.id), steps)}

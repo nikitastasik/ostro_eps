@@ -153,7 +153,7 @@ export default function HotelPage() {
           <div className="muted">
             {h.address || "адрес не указан"}{h.stars ? ` · ${"★".repeat(h.stars)}` : ""}
             {h.building.levels ? ` · здание ${h.building.levels} эт.` : ""}
-            {h.website && <> · <a href={h.website} target="_blank" rel="noreferrer">сайт</a></>}
+            {h.website && /^https?:\/\//i.test(h.website) && <> · <a href={h.website} target="_blank" rel="noreferrer">сайт</a></>}
             {h.osm && <> · <a href={`https://www.openstreetmap.org/${h.osm.startsWith("n") ? "node" : h.osm.startsWith("w") ? "way" : "relation"}/${h.osm.slice(1)}`} target="_blank" rel="noreferrer">OSM</a></>}
           </div>
           {h.complex && h.complex.siblings.length > 0 && (
@@ -180,8 +180,16 @@ export default function HotelPage() {
         </div>
       </div>
 
+      <nav className="hotel-toc" aria-label="Разделы страницы отеля">
+        {fit.data && <a href="#fit">Под ваш запрос</a>}
+        <a href="#view">Панорама из окна</a>
+        {h.groups.map((grp) => <a key={grp.key} href={`#grp-${grp.key}`}>{grp.title}</a>)}
+        <a href="#questions">Вопросы отельеру</a>
+        <a href="#runs" onClick={() => { const d = document.getElementById("runs"); if (d instanceof HTMLDetailsElement) d.open = true; }}>Журнал агентов</a>
+      </nav>
+
       {fit.data && (
-        <div className="card mt fit-card">
+        <div className="card mt fit-card" id="fit">
           <div className="row between wrap">
             <h2 style={{ margin: 0 }}>Под ваш запрос</h2>
             <div className="row wrap">
@@ -210,7 +218,7 @@ export default function HotelPage() {
               initialFloor={urlFloor || fit.data?.result.room?.min_floor || undefined} />
           </div>
           {h.groups.map((grp) => (
-            <div className="card" key={grp.key}>
+            <div className="card" key={grp.key} id={`grp-${grp.key}`}>
               <h2>{grp.title}</h2>
               {grp.items.map((c) => <CharItem key={c.key} c={c} hotelId={h.id} onRecalc={recalc} />)}
             </div>
@@ -258,7 +266,7 @@ export default function HotelPage() {
         </div>
       </div>
 
-      <div className="grid two mt">
+      <div className="grid two mt" id="questions">
         <div className="card">
           <h2>Вопросы отельеру</h2>
           {(h.questions || []).length === 0 && <div className="small muted">Вопросов нет</div>}
@@ -292,9 +300,9 @@ export default function HotelPage() {
         </div>
       </div>
 
-      <div className="card mt">
-        <h2>Журнал агентов по отелю</h2>
-        <div className="grid two">
+      <details className="card mt fold" id="runs">
+        <summary><h2>Журнал агентов по отелю</h2><span className="small muted">{(h.runs || []).length} {plural((h.runs || []).length, "запуск", "запуска", "запусков")} · какие инструменты вызывали и почему</span></summary>
+        <div className="grid two mt">
           <div>
             {(h.runs || []).map((r) => (
               <div key={r.id} className="row between" style={{ padding: "7px 0", borderBottom: "1px solid var(--line-soft)" }}>
@@ -305,7 +313,7 @@ export default function HotelPage() {
           </div>
           <div>{openRun ? <RunLog runId={openRun} /> : <div className="empty small">Выберите запуск, чтобы увидеть, какие инструменты агенты вызывали и почему</div>}</div>
         </div>
-      </div>
+      </details>
       {runId && <RunDrawer runId={runId} onClose={() => setRunId(null)} onDone={onDone} title={`Агенты собирают данные: ${h.name}`} />}
       {toast.node}
     </div>

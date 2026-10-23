@@ -1,4 +1,4 @@
-import { NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, Route, Routes, useNavigate } from "react-router-dom";
 import { api, Meta } from "./api";
 import AgentsPage from "./pages/AgentsPage";
 import CharacteristicsPage from "./pages/CharacteristicsPage";
@@ -30,10 +30,9 @@ function CompareBar() {
 export default function App() {
   const meta = useAsync<Meta>(() => api.meta(), []);
   const m = meta.data;
-  const onSearch = useLocation().pathname === "/";
   return (
     <>
-      <header className={`topbar ${onSearch ? "on-lime" : ""}`}>
+      <header className="topbar on-lime">
         <NavLink to="/" className="brand">
           <span className="brand-word">Островок</span>
           <span><span className="brand-sub">Знания об отелях</span><small>{m ? `${m.region.name} · ${m.hotels} ${plural(m.hotels, "отель", "отеля", "отелей")} · ${m.characteristics} ${plural(m.characteristics, "характеристика", "характеристики", "характеристик")}` : "загрузка…"}</small></span>

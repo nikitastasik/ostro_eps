@@ -19,7 +19,7 @@ import time
 import traceback
 
 import numpy as np
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from ..config import settings
@@ -304,15 +304,27 @@ HANDLERS = {
 }
 
 
+def claim_run(session: Session, run_id: int) -> bool:
+    """Атомарно переводит запуск из очереди в работу. Второй претендент (воркер или run_now) получает False."""
+    res = session.execute(
+        update(AgentRun).where(AgentRun.id == run_id, AgentRun.status == "queued").values(status="running", started_at=utcnow())
+    )
+    session.commit()
+    return res.rowcount == 1
+
+
 def execute_run(run_id: int) -> None:
+    """Выполняет запуск из очереди, если его ещё никто не взял."""
+    with SessionLocal() as session:
+        if not claim_run(session, run_id):
+            return
+    _execute_claimed(run_id)
+
+
+def _execute_claimed(run_id: int) -> None:
     session = SessionLocal()
     try:
         run = session.get(AgentRun, run_id)
-        if run is None or run.status not in {"queued", "running"}:
-            return
-        run.status = "running"
-        run.started_at = utcnow()
-        session.commit()
         logger = RunLogger(session, run)
         try:
             summary = HANDLERS[run.kind](session, run, logger)
@@ -328,7 +340,7 @@ def execute_run(run_id: int) -> None:
             session.rollback()
             run = session.get(AgentRun, run_id)
             run.status = "error"
-            run.error = f"{exc.__class__.__name__}: {exc}"
+            run.error = f"{exc.__class__.__name__}, подробности в логах"  # текст исключения — только в лог
             log.error("Запуск %s упал: %s", run_id, traceback.format_exc())
         run.finished_at = utcnow()
         session.commit()
@@ -336,11 +348,19 @@ def execute_run(run_id: int) -> None:
         session.close()
 
 
+def execute_now(session: Session, run: AgentRun) -> None:
+    """Выполняет только что созданный запуск в текущем потоке. Сразу «в работе»: воркер берёт только queued."""
+    run.status = "running"
+    run.started_at = utcnow()
+    session.commit()
+    _execute_claimed(run.id)
+    session.expire_all()
+
+
 def run_now(session: Session, kind: str, **kw) -> AgentRun:
     """Создаёт запуск и сразу выполняет его в текущем потоке (для коротких задач)."""
     run = create_run(session, kind, **kw)
-    session.commit()
-    execute_run(run.id)
+    execute_now(session, run)
     session.expire_all()
     return session.get(AgentRun, run.id)
 
@@ -354,6 +374,9 @@ class Worker(threading.Thread):
 
     def run(self) -> None:
         log.info("Воркер агентов запущен")
+        with SessionLocal() as s:  # запуски, прерванные остановкой процесса, — обратно в очередь
+            s.execute(update(AgentRun).where(AgentRun.status == "running").values(status="queued"))
+            s.commit()
         while not self.stop_event.is_set():
             try:
                 self.tick()

@@ -294,7 +294,10 @@ def compile_llm(text: str) -> dict | None:
     res.setdefault(
         "conflict", {"fields": [], "authority": ["hotelier_confirmed", "hotelier", "osm", "geo"], "policy": "priority"}
     )
-    if _validate(res):
+    try:
+        if _validate(res):
+            return None
+    except (AttributeError, TypeError, ValueError, KeyError):  # JSON не той формы — откат на правила
         return None
     return res
 

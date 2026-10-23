@@ -38,7 +38,9 @@
 }
 
 * { box-sizing: border-box; }
-html, body, #root { height: 100%; }
+/* #root растёт с контентом: при height: 100% липкая шапка отваливалась после первого экрана */
+html, body { height: 100%; }
+#root { min-height: 100%; }
 body {
   margin: 0;
   background: var(--bg);
@@ -51,6 +53,9 @@ body {
 }
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
+/* ссылки внутри строки текста отличаются не только цветом */
+p a, .small a, .tiny a, .muted a { text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px; }
+a.btn, a.chip, a.hero-tour { text-decoration: none; }
 h1, h2, h3, h4 { margin: 0 0 8px; line-height: 1.15; font-weight: 650; text-wrap: balance; }
 h1 { font-size: 34px; letter-spacing: -0.02em; }
 h2 { font-size: 22px; letter-spacing: -0.01em; }
@@ -112,8 +117,6 @@ main { display: block; }
 .mono, .small, .tiny { overflow-wrap: anywhere; }
 .btn, .btn.small, .chip { overflow-wrap: normal; }
 .nowrap { white-space: nowrap; }
-/* якоря (#view, #char-…, #scenario, вопросы) не прячутся под липкой шапкой */
-[id] { scroll-margin-top: calc(var(--topbar-h) + 12px); }
 .hr { height: 1px; background: var(--line); margin: 14px 0; }
 .mt { margin-top: 14px; }
 .mt-s { margin-top: 8px; }
@@ -253,7 +256,7 @@ table.t tr:hover td { background: #fafafa; }
 /* оценка соответствия — флажок, как рейтинг отеля на Островке */
 .score {
   width: 52px; height: 58px; display: grid; place-items: start center; padding-top: 10px;
-  color: #fff; font-weight: 700; font-size: 20px; font-variant-numeric: tabular-nums;
+  color: #fff; font-weight: 700; font-size: 18px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
   clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 84%, 0 100%); border-radius: 6px 6px 0 0;
 }
 .room { margin: 10px 0 6px; padding: 12px 14px; border-radius: var(--radius-s); background: var(--lime-soft); border: 1px solid var(--lime-line); font-size: 14.5px; }
@@ -313,7 +316,8 @@ table.t tr:hover td { background: #fafafa; }
 .month-select { border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px; min-height: 36px; background: var(--card); font: inherit; font-size: 13.5px; }
 .map { width: 100%; height: 520px; border-radius: var(--radius); overflow: hidden; background: #e6ece6; }
 .map.small { height: 360px; }
-.leaflet-container { font-family: var(--font); }
+/* свой слой наложения: кнопки Leaflet (z-index 1000) не вылезают поверх липкой шапки и оглавления */
+.leaflet-container { font-family: var(--font); isolation: isolate; z-index: 0; }
 .mk { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35); color: #fff; font-weight: 700; font-size: 12px; display: grid; place-items: center; }
 .mk.hl { transform: scale(1.25); z-index: 1000 !important; }
 
@@ -334,6 +338,24 @@ table.t tr:hover td { background: #fafafa; }
 .fact .ev { margin-top: 4px; color: var(--muted); font-size: 13px; }
 .facade-table td, .facade-table th { font-size: 13.5px; }
 .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
+
+/* оглавление страницы отеля: прилипает под шапкой, прокручивается по горизонтали */
+.hotel-toc {
+  position: sticky; top: var(--topbar-h); z-index: 900;
+  display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;
+  margin: 14px 0 0; padding: 10px 0; background: var(--bg);
+}
+.hotel-toc::-webkit-scrollbar { display: none; }
+.hotel-toc a { flex: none; padding: 7px 14px; border-radius: 999px; background: var(--card); color: var(--text); font-size: 14px; white-space: nowrap; }
+.hotel-toc a:hover { color: var(--accent-text); text-decoration: none; }
+/* якоря (#view, #char-…, #scenario, вопросы) не прячутся под липкой шапкой и оглавлением отеля */
+[id] { scroll-margin-top: calc(var(--topbar-h) + 64px); }
+/* сворачиваемый блок: заголовок — кнопка раскрытия */
+details.fold > summary { list-style: none; cursor: pointer; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+details.fold > summary::-webkit-details-marker { display: none; }
+details.fold > summary h2 { margin: 0; }
+details.fold > summary::after { content: "Показать"; margin-left: auto; color: var(--accent-text); font-weight: 550; font-size: 14px; }
+details.fold[open] > summary::after { content: "Скрыть"; }
 
 /* ---------- журнал агентов: тип шага — точкой и подписью, не полосой ---------- */
 .log { display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; max-height: 560px; overflow: auto; padding-right: 4px; }
@@ -379,7 +401,7 @@ table.cmp tr.group td { background: var(--bg); font-weight: 650; color: var(--te
 .kv dt { color: var(--muted); }
 .kv dd { margin: 0; }
 .agent-card { padding: 16px; }
-.agent-card h3 { display: flex; gap: 8px; align-items: center; }
+.agent-card h2 { display: flex; gap: 8px; align-items: center; }
 .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--text); color: #fff; padding: 12px 18px; border-radius: var(--radius-s); z-index: 3000; box-shadow: var(--shadow-pop); font-size: 14.5px; }
 .cmp-bar { position: fixed; bottom: 18px; right: 18px; z-index: 1500; background: var(--text); color: #fff; border-radius: var(--radius); padding: 10px 12px 10px 18px; display: flex; gap: 10px; align-items: center; box-shadow: var(--shadow-pop); }
 .cmp-bar .btn { min-height: 36px; padding: 6px 14px; }
@@ -433,7 +455,7 @@ table.cmp tr.group td { background: var(--bg); font-weight: 650; color: var(--te
   .tabs { overflow-x: auto; scrollbar-width: none; }
   .tabs button { white-space: nowrap; }
   .result { grid-template-columns: 44px minmax(0, 1fr); gap: 12px; padding: 14px; }
-  .score { width: 44px; height: 50px; font-size: 17px; padding-top: 8px; }
+  .score { width: 46px; height: 50px; font-size: 15px; padding-top: 9px; }
   .rays-map { height: 300px; }
   .map { height: 340px; }
   .modal { padding: 16px; }

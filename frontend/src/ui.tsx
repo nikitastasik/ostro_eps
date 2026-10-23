@@ -110,7 +110,8 @@ export function NeedsList({ needs }: { needs: Need[] }) {
 
 export function Confidence({ value, label = true }: { value: number; label?: boolean }) {
   return (
-    <span className="conf" title={`Уверенность ${Math.round(value * 100)}%`} aria-label={`уверенность ${Math.round(value * 100)}%`}>
+    <span className="conf" title={`Уверенность в значении ${Math.round(value * 100)}%`}>
+      <span className="sr-only">уверенность </span>
       <span className="bar" aria-hidden="true"><i style={{ width: `${Math.round(value * 100)}%`, background: confColor(value) }} /></span>
       {label && <span>{Math.round(value * 100)}%</span>}
     </span>
@@ -205,8 +206,8 @@ export function ScoreRing({ score }: { score: number }) {
   const c = scoreColor(score);
   return (
     <div className="score" style={{ background: c }} title="Насколько отель подходит под запрос с учётом уверенности данных"
-      role="img" aria-label={`Подходит на ${score} из 100`}>
-      {score}
+      role="img" aria-label={`Совпадение с запросом ${score}%`}>
+      {score}%
     </div>
   );
 }
