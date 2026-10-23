@@ -1,0 +1,42 @@
+# Dev-выборка №2 (бывшая отложенная): после первого замера на ней расширялись словари,
+# поэтому это уже не честная отложенная выборка. Честная — *_holdout.yaml.
+- query: хочу просыпаться с видом на море
+  expect: [sea_view]
+- query: чтобы ночью не мешали машины
+  expect: [quietness]
+- query: едем с той-терьером
+  expect: [pets_policy]
+- query: в пешей доступности от пляжа и с балконом
+  expect: [beach_access]
+- query: посмотреть на закат с бокалом вина прямо из номера
+  expect: [sunset_view]
+- query: чтобы ребёнку было где поиграть рядом с отелем
+  expect: [families]
+- query: тихое место без ночных клубов рядом
+  expect: [quietness]
+- query: быстрый вайфай для созвонов
+  expect: [workspace]
+- query: горный пейзаж из окна
+  expect: [mountain_view]
+- query: море тёплое в сентябре
+  expect: [swim_season]
+- query: от вокзала недалеко
+  expect: [transport]
+- query: бабушке тяжело ходить, нужен лифт
+  expect: [elevator]
+- query: рядом аптека, открытая круглосуточно
+  expect: [night_services]
+- query: машину где оставить
+  expect: [car_access]
+- query: усадьба с историей
+  expect: [building_history]
+- query: окна не на дорогу
+  expect: [quietness]
+- query: до набережной пару минут
+  expect: [beach_access]
+- query: кафе и бары в шаговой доступности
+  expect: [nightlife]
+- query: темно в номере днём, чтобы отоспаться после ночного поезда
+  expect: [blackout_curtains]
+- query: прямо у пляжа, с видом на закат над морем
+  expect: [beach_access, sunset_view]

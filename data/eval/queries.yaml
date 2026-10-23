@@ -1,0 +1,82 @@
+# Размеченная выборка запросов гостей: какие характеристики (ключи) агент-консьерж
+# должен распознать. Метрика — точность/полнота/F1 по ключам.
+- query: тихий номер с видом на закат недалеко от моря
+  expect: [quietness, sunset_view, beach_access]
+- query: с собакой, чтобы рядом был парк для выгула
+  expect: [pets_policy, pets_walk]
+- query: "с детьми: детская площадка рядом и пляж без лестниц"
+  expect: [families, beach_access]
+- query: в гуще событий, бары рядом и аптека, которая работает ночью
+  expect: [nightlife, night_services]
+- query: вид на горы, тихо, обязательно парковка
+  expect: [mountain_view, quietness, car_access]
+- query: хочу видеть закат над морем в октябре и ещё искупаться
+  expect: [sunset_view, swim_season]
+- query: первая линия и не переходить дорогу до пляжа
+  expect: [beach_access]
+- query: исторический особняк в центре
+  expect: [building_history, center_access]
+- query: "выспаться после ночного перелёта: плотные шторы и тишина"
+  expect: [blackout_curtains, quietness]
+- query: "удалённо поработать: рабочий стол и быстрый интернет"
+  expect: [workspace]
+- query: отель с видом на море
+  expect: [sea_view]
+- query: где можно с кошкой
+  expect: [pets_policy]
+- query: близко к пляжу и чтобы была детская кроватка
+  expect: [beach_access, kids_facilities]
+- query: приеду на электромобиле, нужна зарядка
+  expect: [car_access]
+- query: тишина и вид на море, этаж повыше
+  expect: [quietness, sea_view]
+- query: до моря не больше 5 минут пешком
+  expect: [beach_access]
+- query: недалеко от вокзала, чтобы доехать до аэропорта на Ласточке
+  expect: [transport]
+- query: без стройки рядом, спокойный район
+  expect: [construction_nearby, quietness]
+- query: с коляской, нужен лифт и пляж без подъёмов
+  expect: [elevator, beach_access]
+- query: хочу закат из окна
+  expect: [sunset_view]
+- query: номер не в стену соседнего дома, открытый вид
+  expect: [window_outlook]
+- query: рядом круглосуточный магазин
+  expect: [night_services]
+- query: видно морской вокзал или маяк
+  expect: [landmark_view]
+- query: поплавать в мае
+  expect: [swim_season]
+- query: на машине, подъехать к входу
+  expect: [car_access]
+- query: с большой собакой, лабрадор
+  expect: [pets_policy]
+- query: отель для семьи с малышом
+  expect: [families, kids_facilities]
+- query: шумоизоляция обязательно
+  expect: [soundproofing]
+- query: ночная жизнь и клубы
+  expect: [nightlife]
+- query: в центре и чтобы до пляжа было рядом
+  expect: [center_access, beach_access]
+- query: гостиница с пандусом для инвалидной коляски
+  expect: [accessibility]
+- query: горы из окна и тишина ночью
+  expect: [mountain_view, quietness]
+- query: высокий этаж с панорамой моря
+  expect: [building_levels, sea_view]
+- query: вид на закат и парковка
+  expect: [sunset_view, car_access]
+- query: где тепло купаться в октябре
+  expect: [swim_season]
+- query: спокойное место, где можно выспаться днём
+  expect: [quietness, blackout_curtains]
+- query: недалеко от моря, можно с питомцем
+  expect: [beach_access, pets_policy]
+- query: пешком до центра и до пляжа
+  expect: [center_access, beach_access]
+- query: рабочее место и вайфай
+  expect: [workspace]
+- query: старинное здание с историей
+  expect: [building_history]

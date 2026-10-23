@@ -1,0 +1,167 @@
+# Вид из окна: вычисляется по геоданным (рельеф Copernicus DEM + высоты зданий OSM)
+- key: sea_view
+  title: Вид на море
+  group: view
+  scope: facade
+  icon: waves
+  description: Видно ли море из окон, начиная с какого этажа и с какой стороны здания.
+  value_fields:
+    available: {type: bool, title: Море видно из окон}
+    min_floor: {type: int, title: С какого этажа}
+    quality: {type: enum, values: [none, glimpse, partial, wide], title: Насколько широко видно море}
+    max_width_deg: {type: number, title: Ширина обзора моря, градусы}
+    best_facade: {type: facade, title: Лучшая сторона}
+  depends_on: [building_levels]
+  recipe:
+    - tool: geo.sea_view
+    - tool: hotelier.ask
+      when: verify
+  confidence_threshold: 0.45
+  ttl_days: 365
+  invalidate_on: [buildings_changed]
+  conflict:
+    fields:
+      - {field: available, type: bool}
+      - {field: min_floor, type: number, tolerance: 2}
+    authority: [geo, hotelier_confirmed, hotelier]
+    policy: computed_wins
+  question:
+    text: Из каких номеров видно море и начиная с какого этажа? Видно ли его с нижних этажей?
+    fields: [available, min_floor, best_facade]
+  search:
+    label: Вид на море
+    phrases: [вид на море, видом на море, море из окна, море из номера, на море смотр, морской вид, видно море, панорам моря, окна на море]
+    criteria:
+      - {field: available, op: eq, value: true}
+    partial:
+      - {field: quality, op: eq, value: glimpse, score: 0.4}
+    variants:
+      - phrases: [панорамн, широк, весь горизонт]
+        label: Панорамный вид на море
+        criteria: [{field: quality, op: eq, value: wide}]
+
+- key: sunset_view
+  title: Закат из окна
+  group: view
+  scope: facade
+  icon: sunset
+  description: >-
+    Видно ли из окон, как садится солнце: в какие месяцы, с какого этажа, над морем или за горами.
+    Считается по положению Солнца (алгоритм NOAA) и линии горизонта из окна.
+  value_fields:
+    available: {type: bool, title: Закат виден из окон}
+    min_floor: {type: int, title: С какого этажа}
+    months: {type: months, title: В какие месяцы}
+    over_sea_months: {type: months, title: Месяцы, когда солнце садится в море}
+    best_facade: {type: facade, title: Сторона здания}
+  depends_on: [building_levels]
+  recipe:
+    - tool: geo.sunset_view
+    - tool: hotelier.ask
+      when: low_confidence
+  confidence_threshold: 0.45
+  ttl_days: 365
+  invalidate_on: [buildings_changed]
+  conflict:
+    fields:
+      - {field: available, type: bool}
+      - {field: min_floor, type: number, tolerance: 2}
+    authority: [geo, hotelier_confirmed, hotelier]
+    policy: computed_wins
+  question:
+    text: Видно ли из ваших номеров закат? Если да — из каких номеров и с какого этажа?
+    fields: [available, min_floor, best_facade]
+  search:
+    label: Закат из окна
+    phrases: [закат, на закат, закатом, заходящ солнц, вечернее солнце, сансет, sunset]
+    criteria:
+      - {field: available, op: eq, value: true}
+    month_field: months
+    variants:
+      - phrases: [закат над морем, закат в море, солнце садится в море, садится в море]
+        label: Закат над морем
+        criteria: [{field: over_sea_months, op: nonempty, value: true}]
+        month_field: over_sea_months
+
+- key: mountain_view
+  title: Вид на горы
+  group: view
+  scope: facade
+  icon: mountain
+  description: Видны ли из окон горы (рельеф выше 450 м) и какие вершины, с какого этажа.
+  value_fields:
+    available: {type: bool, title: Горы видны}
+    min_floor: {type: int, title: С какого этажа}
+    peaks: {type: list, title: Видимые вершины}
+    best_facade: {type: facade, title: Сторона здания}
+  depends_on: [building_levels]
+  recipe:
+    - tool: geo.mountain_view
+  confidence_threshold: 0.4
+  ttl_days: 365
+  invalidate_on: [buildings_changed]
+  conflict:
+    fields:
+      - {field: available, type: bool}
+    authority: [geo, hotelier_confirmed, hotelier]
+    policy: computed_wins
+  question:
+    text: Видны ли из номеров горы? С какой стороны и с какого этажа?
+    fields: [available, min_floor]
+  search:
+    label: Вид на горы
+    phrases: [вид на горы, видом на горы, горы из окна, горный вид, на горы смотр, видны горы, горы видно, горн пейзаж, пейзаж гор, хребет, вершин, снежн вершин, горн]
+    criteria:
+      - {field: available, op: eq, value: true}
+
+- key: landmark_view
+  title: Вид на достопримечательность
+  group: view
+  scope: facade
+  icon: landmark
+  description: Какие заметные ориентиры города видны из окон (проверка прямой видимости до вершины объекта).
+  value_fields:
+    available: {type: bool, title: Виден хотя бы один ориентир}
+    landmarks: {type: list, title: Видимые ориентиры}
+    min_floor: {type: int, title: С какого этажа}
+  depends_on: [building_levels]
+  recipe:
+    - tool: geo.landmark_view
+  confidence_threshold: 0.4
+  ttl_days: 365
+  invalidate_on: [buildings_changed]
+  conflict:
+    fields:
+      - {field: available, type: bool}
+    authority: [geo, hotelier_confirmed, hotelier]
+    policy: computed_wins
+  search:
+    label: Вид на ориентир города
+    phrases: [вид на достопримечат, вид на маяк, вид на морской вокзал, видно морской вокзал, вид на порт, вид на город, вид на ахун, башн]
+    criteria:
+      - {field: available, op: eq, value: true}
+
+- key: window_outlook
+  title: Что под окнами
+  group: view
+  scope: facade
+  icon: building
+  description: Не упираются ли окна в соседний дом — расстояние до ближайшей преграды по направлению взгляда.
+  value_fields:
+    open_view: {type: bool, title: Открытый вид хотя бы с одной стороны}
+    min_wall_m: {type: number, title: Минимальное расстояние до стены напротив, м}
+  depends_on: [building_levels]
+  recipe:
+    - tool: geo.window_outlook
+  confidence_threshold: 0.4
+  ttl_days: 365
+  invalidate_on: [buildings_changed]
+  conflict:
+    fields: []
+    authority: [geo]
+    policy: computed_wins
+  search:
+    label: Открытый вид
+    phrases: [не в стену, открытый вид, не во двор колодец, простор, без соседних домов]
+    criteria:
+      - {field: open_view, op: eq, value: true}

@@ -1,0 +1,55 @@
+# Запуск: cp .env.example .env (необязательно) && docker compose up --build → http://localhost:8080
+services:
+  db:
+    image: postgres:16.4-alpine
+    platform: linux/amd64
+    env_file:
+      - .env.example
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app}
+      POSTGRES_DB: ${POSTGRES_DB:-ostrovok}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    platform: linux/amd64
+    env_file:
+      - .env.example
+    environment:
+      # значения из .env (если он есть) перекрывают .env.example
+      APP_PORT: 8080
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-app}@db:5432/${POSTGRES_DB:-ostrovok}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+      HOTELIER_LOGIN: ${HOTELIER_LOGIN:-hotelier}
+      HOTELIER_PASSWORD: ${HOTELIER_PASSWORD:-hotelier123}
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-env}
+      HOTELIER_AUTOREPLY: ${HOTELIER_AUTOREPLY:-false}
+      ACTUALIZE_INTERVAL_MIN: ${ACTUALIZE_INTERVAL_MIN:-30}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3).status == 200 else 1)"]
+      interval: 10s
+      timeout: 4s
+      start_period: 60s
+      retries: 6
+    restart: unless-stopped
+
+volumes:
+  pgdata:

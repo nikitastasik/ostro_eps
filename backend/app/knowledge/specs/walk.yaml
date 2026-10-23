@@ -1,0 +1,110 @@
+# Реальная доступность: пешеходный граф OSM + рельеф (функция Тоблера)
+- key: beach_access
+  title: Дорога до пляжа
+  group: walk
+  scope: hotel
+  icon: beach
+  description: >-
+    Реальный пеший маршрут до ближайшего пляжа: расстояние, время туда и обратно с учётом
+    подъёмов, лестницы, переходы через крупные дороги и способ пересечения железной дороги.
+  value_fields:
+    walk_m: {type: number, title: Пешком, м}
+    straight_m: {type: number, title: По прямой, м}
+    minutes_to: {type: number, title: Минут до пляжа}
+    minutes_back: {type: number, title: Минут обратно}
+    climb_back_m: {type: number, title: Подъём на обратном пути, м}
+    steps: {type: int, title: Участков с лестницами}
+    major_crossings: {type: int, title: Переходов через крупные дороги}
+    rail: {type: enum, values: [none, underpass, bridge, level], title: Как пересекается железная дорога}
+  recipe:
+    - tool: geo.walk_beach
+  confidence_threshold: 0.4
+  ttl_days: 180
+  invalidate_on: [roads_changed]
+  conflict:
+    fields:
+      - {field: walk_m, type: number, tolerance: 400}
+    authority: [geo, hotelier_confirmed, hotelier]
+    policy: computed_wins
+  question:
+    text: Сколько минут пешком от отеля до ближайшего пляжа и есть ли по пути лестницы или крутой подъём?
+    fields: [minutes_to, steps]
+  search:
+    label: Пляж рядом
+    phrases: [недалеко от моря, рядом с морем, близко к морю, у моря, рядом с пляжем, близко к пляжу, до пляжа, до моря, к морю, первая линия, первой линии, на берегу, у пляжа, у самого моря, пляж, пляжа, набережн, пешком до моря, пляж рядом, море рядом]
+    criteria:
+      - {field: minutes_to, op: le, value: 10, soft: 8}
+    numeric:
+      - {unit: min, field: minutes_to, op: le}
+      - {unit: m, field: walk_m, op: le}
+    variants:
+      - phrases: [первая линия, первой линии, на берегу, у самого моря, на набережной]
+        label: Первая линия
+        criteria: [{field: walk_m, op: le, value: 250, soft: 150}]
+      - phrases: [без подъём, без лестниц, без горок, ровн дорог, с коляской, коляск, пожил, тяжело ходить, без ступен]
+        label: Пляж без подъёмов и лестниц
+        requires_base: true
+        criteria: [{field: climb_back_m, op: le, value: 15, soft: 15}, {field: steps, op: eq, value: 0}]
+      - phrases: [не переходить дорог, без перехода через дорог, не пересекать дорог, без оживлённ дорог, не переходить трасс]
+        label: Не переходить дорогу
+        requires_base: true
+        criteria: [{field: major_crossings, op: eq, value: 0}]
+
+- key: center_access
+  title: До центра пешком
+  group: walk
+  scope: hotel
+  icon: walk
+  description: Пеший маршрут до исторического центра (Морской вокзал — Курортный проспект) с учётом рельефа.
+  value_fields:
+    walk_m: {type: number, title: Пешком, м}
+    minutes_to: {type: number, title: Минут до центра}
+    minutes_back: {type: number, title: Минут обратно}
+    climb_to_m: {type: number, title: Подъём по пути, м}
+  recipe:
+    - tool: geo.walk_center
+  confidence_threshold: 0.4
+  ttl_days: 180
+  invalidate_on: [roads_changed]
+  conflict:
+    fields: []
+    authority: [geo]
+    policy: computed_wins
+  search:
+    label: Центр пешком
+    phrases: [в центре, до центра, центр рядом, рядом с центром, центр пешком, в центр пешком, центральн]
+    criteria:
+      - {field: minutes_to, op: le, value: 15, soft: 15}
+    numeric:
+      - {unit: min, field: minutes_to, op: le}
+
+- key: transport
+  title: Транспорт и аэропорт
+  group: walk
+  scope: hotel
+  icon: train
+  description: >-
+    Ближайшая остановка, путь пешком до ж/д станции и есть ли с неё прямые поезда до аэропорта
+    (по маршрутам OSM), время до аэропорта на машине по дорожному графу без пробок.
+  value_fields:
+    bus_stop_m: {type: number, title: До остановки, м}
+    station_minutes: {type: number, title: Минут пешком до ж/д станции}
+    airport_train: {type: bool, title: Прямой поезд до аэропорта со станции}
+    airport_drive_min: {type: number, title: До аэропорта на машине, мин}
+  recipe:
+    - tool: geo.transport
+  confidence_threshold: 0.4
+  ttl_days: 180
+  conflict:
+    fields: []
+    authority: [geo]
+    policy: computed_wins
+  search:
+    label: Ж/д станция рядом
+    phrases: [без машины, общественн транспорт, остановк, электричк, ласточк, поезд до аэропорта, до аэропорта, из аэропорта, до вокзала, трансфер, добраться, от вокзал, у вокзал, рядом с вокзал, ж/д вокзал, жд вокзал, железнодорожн вокзал, ж/д станци, автобус, аэропорт]
+    criteria:
+      - {field: station_minutes, op: le, value: 15, soft: 15}
+    variants:
+      - phrases: [до аэропорта, из аэропорта, поезд до аэропорта, ласточк, трансфер]
+        label: Поезд до аэропорта
+        criteria: [{field: airport_train, op: eq, value: true}, {field: station_minutes, op: le, value: 15, soft: 15}]

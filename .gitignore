@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.db
+.env
+node_modules/
+frontend/dist/
+.DS_Store
+.venv/
+venv/
+.ca-proxy.pem
+compose.proxy.local.yml

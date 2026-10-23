@@ -1,0 +1,86 @@
+# Тишина и атмосфера района
+- key: quietness
+  title: Тишина
+  group: atmosphere
+  scope: facade
+  icon: moon
+  description: >-
+    Оценка шума у каждого фасада днём и ночью: дороги по классу, железная дорога, бары и клубы,
+    экранирование соседними зданиями. Ориентир в дБ(A) снаружи у окна.
+  value_fields:
+    night_db: {type: number, title: Шум ночью у окна, дБ(A)}
+    day_db: {type: number, title: Шум днём у окна, дБ(A)}
+    quiet_side: {type: facade, title: Тихая сторона}
+    label: {type: enum, values: [тихо, спокойно, умеренный шум, шумно, очень шумно], title: Оценка}
+  recipe:
+    - tool: geo.noise
+  confidence_threshold: 0.4
+  ttl_days: 120
+  invalidate_on: [buildings_changed, roads_changed]
+  conflict:
+    fields: []
+    authority: [geo]
+    policy: computed_wins
+  search:
+    label: Тихо ночью
+    phrases: [тих, тишин, спокойн, не шумн, без шума, выспаться, не слышно дорог, без дорог под окном, не мешал, шум машин, шум дорог, окна во двор, не на дорогу, не на проспект, спокойн сон, крепк сон, тихое место, тихий район]
+    criteria:
+      - {field: night_db, op: le, value: 45, soft: 10}
+    variants:
+      - phrases: [очень тих, абсолютн тиш, мертвая тишина, полная тишина]
+        label: Очень тихо
+        criteria: [{field: night_db, op: le, value: 40, soft: 8}]
+
+- key: nightlife
+  title: В гуще событий
+  group: atmosphere
+  scope: hotel
+  icon: party
+  description: Насколько оживлён район вечером и ночью — бары, клубы, кафе, пешеходные улицы и набережная рядом.
+  value_fields:
+    level: {type: enum, values: [lively, moderate, calm], title: Уровень оживлённости}
+    bars_300m: {type: int, title: Баров и пабов в 300 м}
+    nightclubs_500m: {type: int, title: Ночных клубов в 500 м}
+    food_300m: {type: int, title: Кафе и ресторанов в 300 м}
+  recipe:
+    - tool: osm.nightlife
+  confidence_threshold: 0.4
+  ttl_days: 90
+  conflict:
+    fields: []
+    authority: [osm]
+    policy: computed_wins
+  search:
+    label: В гуще событий
+    phrases: [в гуще событий, гущ событий, центр событий, тусовк, ночн жизн, бары рядом, клубы рядом, движ, оживлённ, весел, где весело, кафе и бар, бары и кафе, рестораны рядом, кафе рядом, бар рядом, ночн клуб, веселье, куда сходить вечером]
+    criteria:
+      - {field: level, op: in, value: [lively]}
+    partial:
+      - {field: level, op: eq, value: moderate, score: 0.5}
+
+- key: construction_nearby
+  title: Стройки рядом
+  group: atmosphere
+  scope: hotel
+  icon: crane
+  description: Отмеченные в OSM стройплощадки и строящиеся здания в радиусе 300 м — источник шума и пыли в даты поездки.
+  value_fields:
+    sites_300m: {type: int, title: Строек в 300 м}
+    nearest_m: {type: number, title: До ближайшей стройки, м}
+  recipe:
+    - tool: osm.construction
+  confidence_threshold: 0.3
+  ttl_days: 30
+  conflict:
+    fields:
+      - {field: sites_300m, type: number, tolerance: 0}
+    authority: [hotelier_confirmed, osm]
+    policy: priority
+  question:
+    text: Ведётся ли рядом с отелем стройка, которая слышна из номеров?
+    fields: [sites_300m]
+  search:
+    label: Без строек рядом
+    phrases: [без строек, без стройки, стройк, строительств, нет стройки]
+    criteria:
+      - {field: sites_300m, op: eq, value: 0}

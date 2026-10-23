@@ -1,0 +1,62 @@
+# Dev-выборка №2 (бывшая отложенная): после первого замера на ней расширялись словари,
+# поэтому это уже не честная отложенная выборка. Честная — *_holdout.yaml.
+- char_key: pets_policy
+  answer: "Животные допускаются по согласованию с администрацией, вес до 8 кг, стоимость 600 рублей/сутки"
+  expect: {allowed: true, max_weight_kg: 8, fee_rub: 600, fee_unit: night}
+- char_key: pets_policy
+  answer: "С питомцами заселение запрещено"
+  expect: {allowed: false}
+- char_key: pets_policy
+  answer: "Берём котов и небольших собачек. Доплаты нет."
+  expect: {allowed: true, animals: [cat, dog], fee_rub: 0}
+- char_key: blackout_curtains
+  answer: "В номерах стоят рольставни и плотные портьеры, темно даже днём"
+  expect: {available: true}
+- char_key: blackout_curtains
+  answer: "Нет, только лёгкие шторы"
+  expect: {available: false}
+- char_key: soundproofing
+  answer: "Мы меняли окна в 2021 году на звукоизолирующие"
+  expect: {windows: soundproof}
+- char_key: soundproofing
+  answer: "Окна обычные, двухкамерный стеклопакет"
+  expect: {windows: standard}
+- char_key: workspace
+  answer: "Письменный стол и кресло в каждом номере. Оптоволокно 300 Мбит/с."
+  expect: {desk: true, wifi_mbps: 300}
+- char_key: workspace
+  answer: "Рабочего места в номерах нет, но есть переговорная на первом этаже"
+  expect: {desk: false, coworking: true}
+- char_key: kids_facilities
+  answer: "Детскую кроватку ставим по запросу, есть игровая комната, отдельного детского меню нет"
+  expect: {crib: true, kids_club: true, kids_menu: false}
+- char_key: elevator
+  answer: "Здание пятиэтажное, лифт установлен"
+  expect: {available: true}
+- char_key: elevator
+  answer: "К сожалению, лифта в здании нет"
+  expect: {available: false}
+- char_key: accessibility
+  answer: "Вход без ступенек, есть лифт и адаптированный номер"
+  expect: {wheelchair: "yes"}
+- char_key: building_levels
+  answer: "Всего 12 этажей"
+  expect: {levels: 12}
+- char_key: building_levels
+  answer: "Здание двухэтажное"
+  expect: {levels: 2}
+- char_key: building_history
+  answer: "Дом построен в 1910 году, это бывшая дача, объект культурного наследия"
+  expect: {year_built: 1910, heritage: true}
+- char_key: sea_view
+  answer: "Море видно только с верхних этажей, начиная с седьмого"
+  expect: {available: true, min_floor: 7}
+- char_key: sea_view
+  answer: "Из окон моря не видно, вид во двор"
+  expect: {available: false}
+- char_key: car_access
+  answer: "Парковки у отеля нет. К подъезду подъехать нельзя, пешеходная улица."
+  expect: {own_parking: false, car_to_door: false}
+- char_key: car_access
+  answer: "Закрытая охраняемая стоянка во дворе, 500 руб/сутки"
+  expect: {own_parking: true, parking_fee_rub: 500}

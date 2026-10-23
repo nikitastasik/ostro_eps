@@ -1,0 +1,173 @@
+# Что рядом: инфраструктура по OSM (POI, opening_hours, площади)
+- key: night_services
+  title: Что работает ночью
+  group: around
+  scope: hotel
+  icon: clock
+  description: Круглосуточные аптеки и магазины, кафе, открытые после полуночи, — по тегу opening_hours в OSM.
+  value_fields:
+    available: {type: bool, title: Есть ночная аптека или магазин рядом}
+    pharmacy_night_m: {type: number, title: До ночной аптеки, м}
+    shop_night_m: {type: number, title: До ночного магазина, м}
+    food_night: {type: int, title: Кафе и баров, открытых после полуночи (500 м)}
+  recipe:
+    - tool: osm.night_services
+  confidence_threshold: 0.35
+  ttl_days: 90
+  conflict:
+    fields: []
+    authority: [osm]
+    policy: computed_wins
+  search:
+    label: Аптека или магазин ночью
+    phrases: [круглосуточн, ночная аптека, аптека ночью, аптека работала ночью, магазин ночью, работает ночью, открыто ночью, после полуночи, ночной магазин, ночью купить, аптека круглосуточно, открыто круглосуточно, круглосуточно, 24 часа]
+    criteria:
+      - {field: available, op: eq, value: true}
+
+- key: families
+  title: Для семей с детьми
+  group: around
+  scope: hotel
+  icon: kids
+  description: Детские площадки в шаговой доступности, парки и пешеходные зоны, ближайшая детская больница.
+  value_fields:
+    playgrounds_400m: {type: int, title: Детских площадок в 400 м}
+    playground_m: {type: number, title: До ближайшей площадки, м}
+    park_m: {type: number, title: До парка, м}
+    kids_hospital_km: {type: number, title: До детской больницы, км}
+  recipe:
+    - tool: osm.families
+  confidence_threshold: 0.35
+  ttl_days: 180
+  conflict:
+    fields: []
+    authority: [osm]
+    policy: computed_wins
+  search:
+    label: Детская площадка рядом
+    phrases: [с детьми, с ребенком, с ребёнком, для семьи, семейн, детск площадк, площадк для детей, малыш, ребенк, дет, поиграть, игров, для детей, с сыном, с дочк, семьей]
+    criteria:
+      - {field: playgrounds_400m, op: ge, value: 1}
+
+- key: car_access
+  title: На машине
+  group: around
+  scope: hotel
+  icon: car
+  description: Можно ли подъехать к входу, парковки и зарядки для электромобилей рядом.
+  value_fields:
+    car_to_door: {type: bool, title: Можно подъехать к входу}
+    parking_300m: {type: int, title: Парковок в 300 м}
+    parking_m: {type: number, title: До ближайшей парковки, м}
+    ev_chargers_2km: {type: int, title: Зарядок для электромобилей в 2 км}
+  recipe:
+    - tool: osm.car
+    - tool: hotelier.ask
+      when: always_once
+  confidence_threshold: 0.35
+  ttl_days: 180
+  conflict:
+    fields:
+      - {field: car_to_door, type: bool}
+    authority: [hotelier_confirmed, hotelier, osm]
+    policy: priority
+  question:
+    text: Есть ли у отеля своя парковка? Платная ли она и можно ли подъехать на машине прямо к входу?
+    fields: [own_parking, parking_fee_rub, car_to_door]
+  extra_fields:
+    own_parking: {type: bool, title: Своя парковка}
+    parking_fee_rub: {type: number, title: Стоимость парковки, ₽/сутки}
+  search:
+    label: Парковка рядом
+    phrases: [на машине, на авто, парковк, припарковат, стоянк, подъехать, на своей машине, машин оставить, оставить машин, где оставить, поставить машин, авто, автомобил, паркинг]
+    criteria:
+      - {field: parking_300m, op: ge, value: 1}
+    variants:
+      - phrases: [электромобил, зарядк, электрозаправк, tesla, тесл]
+        label: Зарядка для электромобиля
+        criteria: [{field: ev_chargers_2km, op: ge, value: 1}]
+      - phrases: [подъехать к входу, подъехать прямо, к самому входу]
+        label: Подъехать к входу
+        criteria: [{field: car_to_door, op: eq, value: true}]
+
+- key: pets_walk
+  title: Где гулять с собакой
+  group: around
+  scope: hotel
+  icon: paw
+  description: Парки и зелёные зоны для выгула рядом, площадки для собак.
+  value_fields:
+    park_m: {type: number, title: До парка или сквера, м}
+    green_ha_500m: {type: number, title: Зелёных зон в 500 м, га}
+    dog_park_m: {type: number, title: До площадки для собак, м}
+  recipe:
+    - tool: osm.green_walk
+  confidence_threshold: 0.35
+  ttl_days: 180
+  conflict:
+    fields: []
+    authority: [osm]
+    policy: computed_wins
+  search:
+    label: Где выгуливать
+    phrases: [выгул, погулять с собак, гулять с собак, парк рядом, сквер рядом, зелен, выгуливать, погулять с питомц]
+    criteria:
+      - {field: park_m, op: le, value: 500, soft: 400}
+
+- key: building_history
+  title: История здания
+  group: around
+  scope: hotel
+  icon: history
+  description: Год постройки, архитектура, статус объекта культурного наследия — по тегам OSM здания и отеля.
+  value_fields:
+    year_built: {type: int, title: Год постройки}
+    heritage: {type: bool, title: Объект культурного наследия}
+    style: {type: text, title: Архитектура}
+  recipe:
+    - tool: osm.building_history
+    - tool: hotelier.ask
+      when: missing
+  confidence_threshold: 0.3
+  ttl_days: 730
+  conflict:
+    fields:
+      - {field: year_built, type: number, tolerance: 5}
+    authority: [hotelier_confirmed, osm, hotelier]
+    policy: priority
+  question:
+    text: В каком году построено здание отеля? Есть ли у него история или статус памятника архитектуры?
+    fields: [year_built, heritage, style]
+  search:
+    label: Историческое здание
+    phrases: [историческ, старинн, особняк, памятник архитектур, сталинк, истори, архитектур, дореволюц, усадьб, дач, дореволюцион, ампир]
+    criteria:
+      - {field: heritage, op: eq, value: true}
+    partial:
+      - {field: year_built, op: le, value: 1960, score: 0.7}
+
+- key: swim_season
+  title: Море и погода по месяцам
+  group: around
+  scope: hotel
+  icon: thermometer
+  description: >-
+    Температура моря (спутник NOAA OISST) и воздуха, дождливые дни (метеостанция Сочи, NOAA GHCN)
+    по месяцам. Общая для всего региона.
+  value_fields:
+    swim_months: {type: months, title: Месяцы, когда море ≥ 20 °C}
+    warm_sea_months: {type: months, title: Месяцы, когда море ≥ 22 °C}
+  recipe:
+    - tool: climate.monthly
+  confidence_threshold: 0.3
+  ttl_days: 3650
+  conflict:
+    fields: []
+    authority: [climate]
+    policy: computed_wins
+  search:
+    label: Тёплое море
+    phrases: [купаться, искупаться, тёпл мор, тепл мор, бархатн сезон, температура моря, вода тёплая, вода теплая, поплавать, море тепл, вода тепл, купальн сезон, купани, плавать, температур вод]
+    criteria:
+      - {field: swim_months, op: nonempty, value: true}
+    month_field: swim_months

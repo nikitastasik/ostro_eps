@@ -1,0 +1,146 @@
+# Размеченная выборка свободных ответов отельеров: какие поля и значения
+# агент-интервьюер должен извлечь. Используется для метрики точности разбора
+# (страница «Метрики» и scripts/evaluate.py). Ответы написаны в разных стилях:
+# коротко, развёрнуто, с опечатками регистра, с отрицаниями и оговорками.
+- char_key: pets_policy
+  answer: "Да, с собаками можно, до 10 кг, доплата 500 р в сутки. Кошек тоже берём."
+  expect: {allowed: true, animals: [dog, cat], max_weight_kg: 10, fee_rub: 500, fee_unit: night}
+- char_key: pets_policy
+  answer: "К сожалению, с животными не размещаем."
+  expect: {allowed: false}
+- char_key: pets_policy
+  answer: "Принимаем мелких собак и кошек весом не более 5 кг, бесплатно"
+  expect: {allowed: true, animals: [dog, cat], max_weight_kg: 5, fee_rub: 0}
+- char_key: pets_policy
+  answer: "Можно только кошек, 1000 рублей за весь период проживания"
+  expect: {allowed: true, animals: [cat], fee_rub: 1000, fee_unit: stay}
+- char_key: pets_policy
+  answer: "нет, животных не принимаем"
+  expect: {allowed: false}
+- char_key: pets_policy
+  answer: "Pet friendly! Собаки до 25 кг, без доплаты"
+  expect: {allowed: true, animals: [dog], max_weight_kg: 25, fee_rub: 0}
+- char_key: pets_policy
+  answer: "Размещаем собак до 15 килограмм, 1500 ₽ в сутки, нужен ветпаспорт"
+  expect: {allowed: true, animals: [dog], max_weight_kg: 15, fee_rub: 1500, fee_unit: night}
+- char_key: blackout_curtains
+  answer: "Да, во всех номерах плотные блэкаут-шторы."
+  expect: {available: true, rooms: all}
+- char_key: blackout_curtains
+  answer: "Блэкаут-шторы есть только в номерах категории люкс"
+  expect: {available: true, rooms: some}
+- char_key: blackout_curtains
+  answer: "Плотных штор нет, обычные тюль и занавески"
+  expect: {available: false}
+- char_key: blackout_curtains
+  answer: "Есть затемняющие шторы в части номеров, уточняйте при бронировании"
+  expect: {available: true, rooms: some}
+- char_key: soundproofing
+  answer: "Стоят обычные пластиковые стеклопакеты."
+  expect: {windows: standard}
+- char_key: soundproofing
+  answer: "Окна шумозащитные, со стороны проспекта поставили шумоизоляцию."
+  expect: {windows: soundproof}
+- char_key: soundproofing
+  answer: "Тройные стеклопакеты во всех номерах"
+  expect: {windows: triple}
+- char_key: soundproofing
+  answer: "Специальной шумоизоляции нет, обычные окна"
+  expect: {windows: standard}
+- char_key: workspace
+  answer: "В каждом номере есть рабочий стол, wi-fi около 100 Мбит/с, коворкинга нет"
+  expect: {desk: true, wifi_mbps: 100, coworking: false}
+- char_key: workspace
+  answer: "Отдельного стола нет. Интернет 30 мбит"
+  expect: {desk: false, wifi_mbps: 30}
+- char_key: workspace
+  answer: "Рабочая зона есть в номерах делюкс, Wi-Fi 200 Мбит/с, в лобби лаунж для работы"
+  expect: {desk: true, wifi_mbps: 200, coworking: true}
+- char_key: kids_facilities
+  answer: "Кроватку дадим бесплатно, детского меню нет, клуба тоже нет"
+  expect: {crib: true, kids_menu: false, kids_club: false}
+- char_key: kids_facilities
+  answer: "Есть детский клуб с аниматорами и детское меню. Детские кроватки по запросу."
+  expect: {crib: true, kids_menu: true, kids_club: true}
+- char_key: kids_facilities
+  answer: "Детских кроваток нет, детского меню тоже нет"
+  expect: {crib: false, kids_menu: false}
+- char_key: elevator
+  answer: "Лифта нет, здание трёхэтажное"
+  expect: {available: false}
+- char_key: elevator
+  answer: "Да, лифт есть."
+  expect: {available: true}
+- char_key: elevator
+  answer: "Есть два лифта, грузовой и пассажирский"
+  expect: {available: true}
+- char_key: accessibility
+  answer: "Есть пандус и номер для гостей с инвалидностью"
+  expect: {wheelchair: "yes"}
+- char_key: accessibility
+  answer: "Частично: пандус есть, но в номера только по лестнице"
+  expect: {wheelchair: limited}
+- char_key: accessibility
+  answer: "К сожалению, отель не приспособлен для колясок, на входе ступеньки."
+  expect: {wheelchair: "no"}
+- char_key: building_levels
+  answer: "У нас девятиэтажное здание, номера со 2 по 9 этаж"
+  expect: {levels: 9}
+- char_key: building_levels
+  answer: "В здании 5 этажей"
+  expect: {levels: 5}
+- char_key: building_levels
+  answer: "семь этажей плюс мансарда"
+  expect: {levels: 7}
+- char_key: building_history
+  answer: "Здание 1936 года постройки, памятник архитектуры, сталинский ампир"
+  expect: {year_built: 1936, heritage: true, style: сталинский ампир}
+- char_key: building_history
+  answer: "Построено в 2012 году"
+  expect: {year_built: 2012}
+- char_key: sea_view
+  answer: "Море видно из всех номеров!"
+  expect: {available: true, min_floor: 1}
+- char_key: sea_view
+  answer: "Вид на море с 4 этажа, номера на юго-запад"
+  expect: {available: true, min_floor: 4, best_facade: ЮЗ}
+- char_key: sea_view
+  answer: "Нет, море из номеров не видно"
+  expect: {available: false}
+- char_key: sea_view
+  answer: "Море видно начиная с пятого этажа"
+  expect: {available: true, min_floor: 5}
+- char_key: sunset_view
+  answer: "Да, закат видно с 3 этажа, окна на запад"
+  expect: {available: true, min_floor: 3, best_facade: З}
+- char_key: car_access
+  answer: "Своя парковка есть, 300 рублей в сутки, подъехать к входу можно"
+  expect: {own_parking: true, parking_fee_rub: 300, car_to_door: true}
+- char_key: car_access
+  answer: "Своей парковки нет, рядом городская платная. Подъехать к входу можно, чтобы выгрузить багаж."
+  expect: {own_parking: false, car_to_door: true}
+- char_key: car_access
+  answer: "Парковка бесплатная для гостей"
+  expect: {own_parking: true, parking_fee_rub: 0}
+- char_key: room_orientation
+  answer: "Стандарт — во двор; Делюкс — на море, 3-8 этажи; Семейный - на горы"
+  expect:
+    categories:
+      - {name: Стандарт, side: courtyard}
+      - {name: Делюкс, side: sea}
+      - {name: Семейный, side: mountains}
+- char_key: construction_nearby
+  answer: "Рядом стройки нет."
+  expect: {sites_300m: 0}
+- char_key: construction_nearby
+  answer: "Да, через дорогу строят жилой дом, днём бывает шумно."
+  expect: {sites_300m: 1}
+- char_key: workspace
+  answer: "Столы есть во всех номерах, скорость интернета до 50 Мбит в секунду"
+  expect: {desk: true, wifi_mbps: 50}
+- char_key: pets_policy
+  answer: "Разрешено с животными весом до 7 кг. Доплата 700 руб. за сутки"
+  expect: {allowed: true, max_weight_kg: 7, fee_rub: 700, fee_unit: night}
+- char_key: blackout_curtains
+  answer: "Конечно, блэкаут во всех номерах"
+  expect: {available: true, rooms: all}

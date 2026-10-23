@@ -1,0 +1,277 @@
+# Характеристики, которые знает только отельер. Агент-интервьюер спрашивает,
+# отельер отвечает свободным текстом, агент раскладывает ответ по полям.
+- key: building_levels
+  title: Этажность здания
+  group: building
+  scope: hotel
+  icon: floors
+  description: >-
+    Сколько этажей в здании отеля. Нужна для расчёта вида из окна. Источники: тег OSM,
+    оценка по этажности соседних зданий, ответ отельера.
+  value_fields:
+    levels: {type: int, title: Этажей}
+    height_m: {type: number, title: Высота здания, м}
+  recipe:
+    - tool: osm.building_levels
+    - tool: geo.levels_neighbors
+    - tool: hotelier.ask
+      when: low_confidence
+  confidence_threshold: 0.6
+  ttl_days: 1825
+  conflict:
+    fields:
+      - {field: levels, type: number, tolerance: 2}
+    authority: [hotelier_confirmed, osm, hotelier, osm_estimate, default]
+    policy: priority
+  question:
+    text: Сколько этажей в здании отеля и на каких этажах расположены номера?
+    fields: [levels]
+  search:
+    label: Высокий этаж
+    phrases: [высокий этаж, высотк, небольш отель, малоэтажн]
+    criteria:
+      - {field: levels, op: ge, value: 7}
+    variants:
+      - phrases: [небольш отель, малоэтажн, невысок]
+        label: Небольшой отель
+        criteria: [{field: levels, op: le, value: 4}]
+
+- key: pets_policy
+  title: С питомцем
+  group: hotelier
+  scope: hotel
+  icon: paw
+  description: Каких животных и до какого веса принимают, сколько стоит, какие условия.
+  value_fields:
+    allowed: {type: bool, title: Можно с животными}
+    animals: {type: list, values: [dog, cat, bird, rodent], title: Какие животные}
+    max_weight_kg: {type: number, title: Максимальный вес, кг}
+    fee_rub: {type: number, title: Доплата, ₽}
+    fee_unit: {type: enum, values: [night, stay], title: За сутки или за проживание}
+  recipe:
+    - tool: osm.hotel_tag
+      params: {tags: [pets, dog, pets_allowed]}
+    - tool: hotelier.ask
+      when: always_once
+  confidence_threshold: 0.5
+  ttl_days: 365
+  conflict:
+    fields:
+      - {field: allowed, type: bool}
+      - {field: max_weight_kg, type: number, tolerance: 3}
+    authority: [hotelier_confirmed, hotelier, osm]
+    policy: priority
+  question:
+    text: Можно ли заселиться с домашним животным? Каких животных и до какого веса принимаете, есть ли доплата?
+    fields: [allowed, animals, max_weight_kg, fee_rub, fee_unit]
+  search:
+    label: Можно с питомцем
+    phrases: [с собак, с питомц, с кошк, с животн, с котом, с псом, pet friendly, петфрендли, с шпиц, с таксой, с хаски, собак, собачк, кошк, кот, питомец, животн, терьер, чихуахуа, шпиц, мопс, такс, корги, йорк, четвероног]
+    criteria:
+      - {field: allowed, op: eq, value: true}
+    variants:
+      - phrases: [с кошк, с котом]
+        label: С кошкой
+        criteria: [{field: allowed, op: eq, value: true}, {field: animals, op: contains, value: cat}]
+      - phrases: [крупн собак, больш собак, с хаски, с овчарк, с лабрадор]
+        label: С крупной собакой
+        criteria: [{field: allowed, op: eq, value: true}, {field: max_weight_kg, op: ge, value: 25, soft: 10}]
+
+- key: blackout_curtains
+  title: Плотные шторы
+  group: hotelier
+  scope: hotel
+  icon: curtains
+  description: Есть ли в номерах блэкаут-шторы, чтобы выспаться днём после дороги или ночного перелёта.
+  value_fields:
+    available: {type: bool, title: Есть блэкаут-шторы}
+    rooms: {type: enum, values: [all, some], title: Во всех номерах или части}
+  recipe:
+    - tool: hotelier.ask
+      when: always_once
+  confidence_threshold: 0.5
+  ttl_days: 365
+  conflict:
+    fields:
+      - {field: available, type: bool}
+    authority: [hotelier_confirmed, hotelier]
+    policy: priority
+  question:
+    text: Есть ли в номерах плотные (блэкаут) шторы? Во всех номерах или только в части?
+    fields: [available, rooms]
+  search:
+    label: Плотные шторы
+    phrases: [плотн штор, блэкаут, blackout, затемн, выспаться днем, выспаться днём, темно в номере, после перелёта, после перелета, после дороги, ночного перелет, темно, отоспаться, после ночного поезда, после ночн]
+    criteria:
+      - {field: available, op: eq, value: true}
+
+- key: soundproofing
+  title: Шумоизоляция окон
+  group: hotelier
+  scope: hotel
+  icon: window
+  description: Какие окна в номерах — обычные стеклопакеты или шумозащитные. Снижает шум внутри номера.
+  value_fields:
+    windows: {type: enum, values: [standard, soundproof, triple], title: Окна}
+    reduction_db: {type: number, title: Снижение шума, дБ}
+  recipe:
+    - tool: hotelier.ask
+      when: always_once
+  confidence_threshold: 0.5
+  ttl_days: 730
+  conflict:
+    fields:
+      - {field: windows, type: enum}
+    authority: [hotelier_confirmed, hotelier]
+    policy: priority
+  question:
+    text: Какие окна установлены в номерах — обычные стеклопакеты или шумозащитные? Есть ли шумоизоляция?
+    fields: [windows]
+  search:
+    label: Шумоизоляция
+    phrases: [шумоизоляц, звукоизоляц, шумозащит, тройн стеклопакет]
+    criteria:
+      - {field: windows, op: in, value: [soundproof, triple]}
+
+- key: workspace
+  title: Для удалённой работы
+  group: hotelier
+  scope: hotel
+  icon: laptop
+  description: Рабочее место в номере и реальная скорость Wi‑Fi.
+  value_fields:
+    desk: {type: bool, title: Рабочий стол в номере}
+    wifi_mbps: {type: number, title: Скорость Wi-Fi, Мбит/с}
+    coworking: {type: bool, title: Коворкинг или лаунж для работы}
+  recipe:
+    - tool: osm.hotel_tag
+      params: {tags: [internet_access]}
+    - tool: hotelier.ask
+      when: always_once
+  confidence_threshold: 0.5
+  ttl_days: 365
+  conflict:
+    fields:
+      - {field: desk, type: bool}
+      - {field: wifi_mbps, type: number, tolerance: 30}
+    authority: [hotelier_confirmed, hotelier, osm]
+    policy: priority
+  question:
+    text: Есть ли в номерах рабочий стол? Какая реальная скорость Wi‑Fi в номерах?
+    fields: [desk, wifi_mbps, coworking]
+  search:
+    label: Для удалённой работы
+    phrases: [удалённ, удаленн, работать из, рабочее место, рабочий стол, быстрый интернет, хороший интернет, wi-fi, вайфай, wifi, ноутбук, созвон, видеозвон, zoom, конференц, интернет, вай-фай, удаленк, работать удаленно]
+    criteria:
+      - {field: desk, op: eq, value: true}
+      - {field: wifi_mbps, op: ge, value: 50, soft: 30}
+
+- key: kids_facilities
+  title: Для детей в отеле
+  group: hotelier
+  scope: hotel
+  icon: kids
+  description: Детская кроватка, детское меню, детский клуб или игровая комната.
+  value_fields:
+    crib: {type: bool, title: Детская кроватка}
+    kids_menu: {type: bool, title: Детское меню}
+    kids_club: {type: bool, title: Детский клуб или игровая}
+  recipe:
+    - tool: hotelier.ask
+      when: always_once
+  confidence_threshold: 0.5
+  ttl_days: 365
+  conflict:
+    fields:
+      - {field: crib, type: bool}
+    authority: [hotelier_confirmed, hotelier]
+    policy: priority
+  question:
+    text: Есть ли детские кроватки, детское меню и детский клуб или игровая комната?
+    fields: [crib, kids_menu, kids_club]
+  search:
+    label: Детская кроватка
+    phrases: [детск кроват, кроватк, детск меню, детск клуб, аниматор, игров комнат, с младенц, с малыш]
+    criteria:
+      - {field: crib, op: eq, value: true}
+
+- key: elevator
+  title: Лифт
+  group: hotelier
+  scope: hotel
+  icon: elevator
+  description: Есть ли в здании лифт — важно при высокой этажности, с коляской и багажом.
+  value_fields:
+    available: {type: bool, title: Есть лифт}
+  recipe:
+    - tool: osm.hotel_tag
+      params: {tags: [elevator]}
+    - tool: hotelier.ask
+      when: always_once
+  confidence_threshold: 0.5
+  ttl_days: 1825
+  conflict:
+    fields:
+      - {field: available, type: bool}
+    authority: [hotelier_confirmed, hotelier, osm]
+    policy: priority
+  question:
+    text: Есть ли в здании лифт?
+    fields: [available]
+  search:
+    label: Лифт
+    phrases: [лифт, с коляск, пожил, с багаж, тяжёл чемодан, подъемник, нужен лифт]
+    criteria:
+      - {field: available, op: eq, value: true}
+
+- key: accessibility
+  title: Доступная среда
+  group: hotelier
+  scope: hotel
+  icon: wheelchair
+  description: Доступен ли отель для гостей на коляске (тег wheelchair в OSM и ответ отельера).
+  value_fields:
+    wheelchair: {type: enum, values: [yes, limited, no], title: Доступность для коляски}
+  recipe:
+    - tool: osm.hotel_tag
+      params: {tags: [wheelchair]}
+    - tool: hotelier.ask
+      when: missing
+  confidence_threshold: 0.5
+  ttl_days: 730
+  conflict:
+    fields:
+      - {field: wheelchair, type: enum}
+    authority: [hotelier_confirmed, hotelier, osm]
+    policy: priority
+  question:
+    text: Доступен ли отель для гостей на инвалидной коляске — пандус, лифт, номера без порогов?
+    fields: [wheelchair]
+  search:
+    label: Доступно на коляске
+    phrases: [инвалидн, на коляске, колясочник, доступная среда, без порогов, пандус, маломобильн]
+    criteria:
+      - {field: wheelchair, op: in, value: ["yes", limited]}
+
+- key: room_orientation
+  title: Куда выходят окна номеров
+  group: hotelier
+  scope: hotel
+  icon: compass
+  description: >-
+    Какие категории номеров выходят на какую сторону здания. Позволяет перевести расчёт
+    «вид и шум по фасадам» в конкретную категорию номера.
+  value_fields:
+    categories: {type: list, title: Категории номеров и стороны}
+  recipe:
+    - tool: hotelier.ask
+      when: always_once
+  confidence_threshold: 0.5
+  ttl_days: 365
+  conflict:
+    fields: []
+    authority: [hotelier_confirmed, hotelier]
+    policy: priority
+  question:
+    text: Какие категории номеров есть в отеле и на какую сторону (на море, во двор, на улицу, на горы) выходят их окна?
+    fields: [categories]

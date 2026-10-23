@@ -1,0 +1,62 @@
+# Честная отложенная выборка ответов отельеров (составлена после всех правок правил,
+# на ней ничего не настраивалось; результат первого замера фиксируется в README).
+- char_key: pets_policy
+  answer: "Можно с собакой весом до 12 кг. Оплата 800 руб за ночь."
+  expect: {allowed: true, animals: [dog], max_weight_kg: 12, fee_rub: 800, fee_unit: night}
+- char_key: pets_policy
+  answer: "Нет, мы не pet-friendly отель."
+  expect: {allowed: false}
+- char_key: pets_policy
+  answer: "Кошек принимаем бесплатно, собак нет"
+  expect: {allowed: true, animals: [cat], fee_rub: 0}
+- char_key: blackout_curtains
+  answer: "Шторы блэкаут во всех номерах категории стандарт и выше, то есть везде"
+  expect: {available: true}
+- char_key: blackout_curtains
+  answer: "Отсутствуют"
+  expect: {available: false}
+- char_key: soundproofing
+  answer: "Шумоизоляция хорошая: стеклопакеты с тройным остеклением"
+  expect: {windows: triple}
+- char_key: workspace
+  answer: "Столов нет, Wi-Fi бесплатный, около 40 мбит/с"
+  expect: {desk: false, wifi_mbps: 40}
+- char_key: workspace
+  answer: "Есть коворкинг на крыше и столы в номерах"
+  expect: {desk: true, coworking: true}
+- char_key: kids_facilities
+  answer: "Детское меню в ресторане есть, кроватки тоже"
+  expect: {kids_menu: true, crib: true}
+- char_key: elevator
+  answer: "лифт имеется"
+  expect: {available: true}
+- char_key: accessibility
+  answer: "Пандуса нет, вход по крутой лестнице"
+  expect: {wheelchair: "no"}
+- char_key: building_levels
+  answer: "Гостиница в 4 этажа, номера со второго"
+  expect: {levels: 4}
+- char_key: building_levels
+  answer: "Шестнадцатиэтажная башня"
+  expect: {levels: 16}
+- char_key: building_history
+  answer: "Корпус 1958 года, сталинский неоклассицизм"
+  expect: {year_built: 1958, style: сталинский неоклассицизм}
+- char_key: sea_view
+  answer: "Море видно со 2 этажа, все номера смотрят на море"
+  expect: {available: true, min_floor: 2}
+- char_key: sea_view
+  answer: "К сожалению, моря не видно — вокруг высотки"
+  expect: {available: false}
+- char_key: sunset_view
+  answer: "Закат видно с балконов на западной стороне"
+  expect: {available: true, best_facade: З}
+- char_key: car_access
+  answer: "Есть подземный паркинг, 1000 рублей в сутки"
+  expect: {own_parking: true, parking_fee_rub: 1000}
+- char_key: car_access
+  answer: "Парковки своей нет"
+  expect: {own_parking: false}
+- char_key: construction_nearby
+  answer: "Никакой стройки рядом нет, тихо"
+  expect: {sites_300m: 0}
