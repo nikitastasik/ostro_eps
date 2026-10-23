@@ -83,6 +83,16 @@ export default function MetricsPage() {
                   <div className="small muted mt-s">{d.eval.levels_imputation.dsm_check?.note}</div>
                 </>
               )}
+              {d.eval.demand?.top_share != null && (
+                <>
+                  <h3 className="mt">Польза вопросов отельерам</h3>
+                  <div className="small">
+                    Лучшие 20% открытых вопросов ({d.eval.demand.top_n} из {d.eval.demand.questions}) дают <b>{pct(d.eval.demand.top_share)}</b> всей пользы для спроса —
+                    прироста позиций отелей в топ-30 при ответе «да»; полезных вопросов — {d.eval.demand.useful}.
+                    {" "}Спрос: {d.eval.demand.demand_queries} {plural(d.eval.demand.demand_queries, "запрос", "запроса", "запросов")}, из них демо — {d.eval.demand.demo_queries}.
+                  </div>
+                </>
+              )}
               {d.eval.ranking?.pairs > 0 && (
                 <>
                   <h3 className="mt">Согласие ранжирования с разметкой</h3>

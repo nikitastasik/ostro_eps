@@ -14,7 +14,7 @@ from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 
 from .. import llm
-from ..agents import arbiter, concierge, orchestrator, wish
+from ..agents import arbiter, concierge, demand, orchestrator, wish
 from ..agents.compiler import compile_text
 from ..agents.dedup import short_street
 from ..agents.interviewer import parse_with_llm, render_summary
@@ -80,18 +80,7 @@ def meta(session: Session = Depends(get_session)):
                    "sources": rd.meta["sources"], "stats": rd.meta.get("stats", {}), "center": rd.meta.get("center")},
         "hotels": hotels, "characteristics": len(specs), "groups": GROUPS, "llm": llm.status(),
         "tools": [t.describe() for t in load_all().values()],
-        "examples": [
-            "тихий номер с видом на закат недалеко от моря",
-            "с собакой, чтобы рядом был парк для выгула",
-            "с детьми: детская площадка рядом и пляж без лестниц",
-            "в гуще событий, бары рядом и аптека, которая работает ночью",
-            "вид на горы, тихо, обязательно парковка",
-            "хочу видеть закат над морем в октябре и ещё искупаться",
-            "первая линия и не переходить дорогу до пляжа",
-            "исторический особняк в центре",
-            "выспаться после ночного перелёта: плотные шторы и тишина",
-            "удалённо поработать: рабочий стол и быстрый интернет",
-        ],
+        "examples": concierge.EXAMPLES,
     }
 
 
@@ -461,8 +450,12 @@ def characteristic_collect(key: str, session: Session = Depends(get_session)):
 
 # =============================================================== вопросы и противоречия
 @router.get("/api/questions")
-def questions(status: str | None = None, hotel_id: str | None = None, limit: int = 100,
+def questions(status: str | None = None, hotel_id: str | None = None, limit: int = 100, order: str | None = None,
               session: Session = Depends(get_session)):
+    if order == "utility" and status == "open":
+        # очередь по пользе: сначала вопросы, ответ на которые сильнее всего поднимет отель в выдаче
+        return {"items": [{**question_dict(q, session), "utility": {**u, "text": demand.explain(u)}}
+                          for q, u in demand.ranked_open_questions(session, hotel_id=hotel_id, limit=limit)]}
     stmt = select(Question).order_by(desc(Question.id)).limit(limit)
     if status:
         stmt = stmt.where(Question.status == status)
@@ -691,8 +684,12 @@ def _strengths(session: Session, h: Hotel) -> list[dict]:
 def hotelier_hotel(hotel_id: str, user: str = Depends(check_token), session: Session = Depends(get_session)):
     h = _hotel_or_404(session, hotel_id)
     card = hotel_card(session, h)
-    card["questions"] = [question_dict(q, session) for q in session.scalars(
-        select(Question).where(Question.hotel_id == h.id).order_by(Question.status.desc(), desc(Question.id)))]
+    ranked = demand.ranked_open_questions(session, hotel_id=h.id)
+    card["questions"] = [{**question_dict(q, session), "utility": {**u, "text": demand.explain(u)}} for q, u in ranked]
+    card["questions"] += [question_dict(q, session) for q in session.scalars(
+        select(Question).where(Question.hotel_id == h.id, Question.status != "open").order_by(desc(Question.id)))]
+    card["boosts"] = [{"question_id": q.id, "titles": question_dict(q, session).get("titles"), "score": u["score"],
+                       "text": demand.explain(u)} for q, u in ranked if u["score"] > 0][:3]
     card["conflicts"] = [conflict_dict(c, session) for c in session.scalars(
         select(Conflict).where(Conflict.hotel_id == h.id, Conflict.status == "open"))]
     card["strengths"] = _strengths(session, h)

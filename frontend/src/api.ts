@@ -61,6 +61,7 @@ export interface Question {
   answered_by: string | null;
   created_at: string;
   answered_at: string | null;
+  utility?: { score: number; queries: number; text: string; example: { query: string; before: number; after: number; demo: boolean } | null };
 }
 
 export interface Conflict {
@@ -131,6 +132,7 @@ export interface HotelCard {
   changes?: { char_key: string; old: string; new: string; reason: string; at: string }[];
   strengths?: { key: string; title: string; percentile: number; summary: string }[];
   search_appearances?: { count: number; searches: number; items: { query: string; at: string; rank: number }[] };
+  boosts?: { question_id: number; titles?: string[]; score: number; text: string }[];
 }
 
 export interface HotelListItem {

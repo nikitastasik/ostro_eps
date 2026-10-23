@@ -174,6 +174,12 @@ def eval_ranking(session: Session, name: str = "ranking_pairs.yaml") -> dict:
     return {"pairs": len(rows), "agreement": round(ok / len(rows), 3), "errors": errors}
 
 
+def _demand_coverage(session: Session) -> dict:
+    from .agents.demand import coverage
+
+    return coverage(session)
+
+
 def compute_metrics(session: Session, force: bool = False) -> dict:
     with _lock:
         if not force and _cache["data"] is not None and time.time() - _cache["at"] < 30:
@@ -244,6 +250,7 @@ def compute_metrics(session: Session, force: bool = False) -> dict:
                  "answers_holdout": eval_answers("hotelier_answers_holdout.yaml"),
                  "queries_holdout": eval_queries("queries_holdout.yaml"), "sun": eval_sun(),
                  "geo_gold": eval_geo_gold(session), "ranking": eval_ranking(session),
+                 "demand": _demand_coverage(session),
                  "levels_imputation": region_stats.get("levels_imputation")},
         "data_sources": {"buildings": region_stats.get("buildings"), "height_sources": region_stats.get("height_sources"),
                          "pois": region_stats.get("pois"), "roads": region_stats.get("roads")},

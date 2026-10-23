@@ -22,6 +22,18 @@ from ..nlp.query_parser import Criterion, ParsedQuery, criteria_from_dicts, pars
 from ..nlp.ru import dec, dist_text, walk_min_text, walk_to_text
 
 PRIOR = 0.3  # ожидание совпадения, когда данных нет
+EXAMPLES = [  # примеры запросов на главной; они же — «демо-спрос» для пользы вопросов отельерам
+    "тихий номер с видом на закат недалеко от моря",
+    "с собакой, чтобы рядом был парк для выгула",
+    "с детьми: детская площадка рядом и пляж без лестниц",
+    "в гуще событий, бары рядом и аптека, которая работает ночью",
+    "вид на горы, тихо, обязательно парковка",
+    "хочу видеть закат над морем в октябре и ещё искупаться",
+    "первая линия и не переходить дорогу до пляжа",
+    "исторический особняк в центре",
+    "выспаться после ночного перелёта: плотные шторы и тишина",
+    "удалённо поработать: рабочий стол и быстрый интернет",
+]
 MONTHS_PREP = ["январе", "феврале", "марте", "апреле", "мае", "июне", "июле", "августе", "сентябре", "октябре",
                "ноябре", "декабре"]
 
@@ -365,7 +377,7 @@ def evaluate_hotel(h: Hotel, specs: dict, groups: dict[str, list[Criterion]], rv
         need = {"key": k, "title": spec["title"], "status": status, "match": None if m is None else round(m, 2),
                 "confidence": round(conf, 2), "text": text, "sources": rv.sources if rv else [],
                 "rv_status": rv.status if rv else "unknown", "label": groups[k][0].label, "floor": floor,
-                "share": round(share_k[k], 3) if k in share_k else None, "contrib": w * e}
+                "share": round(share_k[k], 3) if k in share_k else None, "contrib": w * e, "w": w, "em": e}
         if k == "quietness" and fv is not None:
             need["db"] = fv.get("night_db")
         if k == "sunset_view" and fv is not None:
@@ -375,8 +387,8 @@ def evaluate_hotel(h: Hotel, specs: dict, groups: dict[str, list[Criterion]], rv
         needs.append(need)
     mult = share_factor(share_all) if facade_keys else 1.0
     for n in needs:
-        if n["key"] in share_k:
-            n["contrib"] *= mult
+        n["mult"] = mult if n["key"] in share_k else 1.0
+        n["contrib"] *= n["mult"]
     score = round(100 * (hotel_sum + mult * facade_sum) / total_w) if total_w else 0
     room = None
     if best_facade and facade_keys:
@@ -406,10 +418,20 @@ def evaluate_hotel(h: Hotel, specs: dict, groups: dict[str, list[Criterion]], rv
         "hotel": hotel_brief(h), "score": score, "excluded": excluded, "needs": needs, "room": room,
         "summary": _summary(needs, room), "verdict": _summary(needs, None),
         "caveats": sum(1 for n in needs if n["status"] in {"partial", "miss"}),
-        "known": len(known), "share": None if share_all is None else round(share_all, 3),
+        "known": len(known), "share": None if share_all is None else round(share_all, 3), "_total_w": total_w,
         "_tie": (round(share_all or 0, 3), round(sum(n["confidence"] for n in known) / len(known), 3) if known else 0,
                  -float((beach.value or {}).get("minutes_to") or 999) if beach and beach.value else -999.0),
     }
+
+
+def _strip(r: dict) -> dict:
+    """Убирает служебные поля оценки перед отдачей в API."""
+    r.pop("_tie", None)
+    r.pop("_total_w", None)
+    for n in r["needs"]:
+        for k in ("contrib", "w", "em", "mult"):
+            n.pop(k, None)
+    return r
 
 
 def _why_above(a: dict, b: dict) -> str:
@@ -491,9 +513,7 @@ def search(session: Session, text: str, criteria_override: list[dict] | None = N
     for a, b in zip(top, top[1:]):
         a["why_above"] = _why_above(a, b) if keys else None
     for r in results:
-        r.pop("_tie", None)
-        for n in r["needs"]:
-            n.pop("contrib", None)
+        _strip(r)
     if log:
         session.add(SearchLog(query=text, parsed=pq.as_dict(), parser=pq.parser,
                               top_hotels=[r["hotel"]["id"] for r in top[:10]]))
@@ -515,10 +535,7 @@ def fit(session: Session, hotel_id: str, text: str) -> dict | None:
     open_q = {(hotel_id, k): q.id for q in session.scalars(select(Question).where(
         Question.hotel_id == hotel_id, Question.status == "open")) for k in q.char_keys or []}
     month = next((c.month for c in pq.criteria if c.month), None)
-    r = evaluate_hotel(h, specs, groups, rvs, open_q, month)
-    r.pop("_tie", None)
-    for n in r["needs"]:
-        n.pop("contrib", None)
+    r = _strip(evaluate_hotel(h, specs, groups, rvs, open_q, month))
     return {"query": pq.as_dict(), "result": r}
 
 

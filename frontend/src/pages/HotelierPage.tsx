@@ -53,7 +53,7 @@ function QuestionCard({ q, onDone }: { q: Question; onDone: () => void }) {
     setBusy(false);
   };
   return (
-    <div className="qcard open">
+    <div className="qcard open" id={`q-${q.id}`}>
       <div className="row between">
         <span className="row" style={{ gap: 6 }}>
           <span className="badge asked">{q.reason === "conflict" ? "уточнение" : q.reason === "verify" ? "подтвердите расчёт" : q.reason === "low_confidence" ? "агент не уверен" : "нет в открытых данных"}</span>
@@ -62,6 +62,7 @@ function QuestionCard({ q, onDone }: { q: Question; onDone: () => void }) {
         <span className="tiny muted">{fmtDate(q.created_at, true)}</span>
       </div>
       <p className="mt-s">{q.text}</p>
+      {q.utility && <div className="small utility">{q.utility.score > 0 ? "↑ " : ""}{q.utility.text}</div>}
       {!steps && (
         <>
           <textarea className="textarea" placeholder="Ответьте своими словами — агент сам разложит ответ по полям" value={text} onChange={(e) => { setText(e.target.value); setPreview(null); }} />
@@ -180,6 +181,18 @@ export default function HotelierPage() {
                     <span className="chip accent">знаем {h.known} из {h.total}</span>
                   </div>
                 </div>
+                {(h.boosts || []).length > 0 && (
+                  <div className="boosts mt">
+                    <h3>Что поднимет вас в выдаче</h3>
+                    <p className="tiny muted">Польза ответа считается по спросу: журнал поисков гостей и демо-запросы (примеры с главной и размеченные выборки). Вопросы ниже отсортированы так же.</p>
+                    {h.boosts!.map((b) => (
+                      <div key={b.question_id} className="row between mt-s boost">
+                        <div className="small"><b>{(b.titles || []).join(", ")}</b> — {b.text}</div>
+                        <button className="btn small" onClick={() => { setTab("questions"); setTimeout(() => document.getElementById(`q-${b.question_id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 50); }}>Ответить</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div className="grid two mt">
                   <div>
                     <h3>Ваши сильные стороны</h3>

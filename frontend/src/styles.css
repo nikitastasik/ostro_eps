@@ -207,6 +207,11 @@ table.t tr:hover td { background: #fbfcfe; }
 .fit-cell .ic.miss { background: var(--bad); }
 .fit-cell .ic.unknown { background: #b5bfcd; }
 
+/* ---------- польза вопросов ---------- */
+.utility { margin-top: 6px; color: #0b6f69; }
+.boosts { padding: 12px 14px; border-radius: 12px; background: #f1fbf9; border: 1px solid #cdeee8; }
+.boost + .boost { border-top: 1px dashed #cdeee8; padding-top: 8px; }
+
 /* ---------- окно пожелания ---------- */
 .modal-back { position: fixed; inset: 0; z-index: 2000; background: rgba(15, 25, 45, 0.45); display: grid; place-items: center; padding: 16px; }
 .modal { width: min(720px, 100%); max-height: calc(100vh - 32px); overflow: auto; }

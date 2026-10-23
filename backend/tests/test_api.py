@@ -178,3 +178,16 @@ def test_compare_under_query(client):
     assert all(c["short"] and len(c["short"]) <= 60 for r in d["rows"] for c in r["cells"])
     plain = client.get("/api/compare", params={"ids": ",".join(ids)}).json()
     assert plain["fit_rows"] == [] and plain["rows"]
+
+
+def test_questions_ranked_by_utility(client):
+    """Вопросы отельеру по пользе: очередь отсортирована, у лучших — объяснение со спросом и местами."""
+    qs = client.get("/api/questions", params={"status": "open", "order": "utility", "limit": 20}).json()["items"]
+    scores = [q["utility"]["score"] for q in qs]
+    assert scores == sorted(scores, reverse=True) and scores[0] > 0
+    assert "запрос" in qs[0]["utility"]["text"] and "место" in qs[0]["utility"]["text"]
+    token = client.post("/api/auth/login", json={"login": "hotelier", "password": "hotelier123"}).json()["token"]
+    h = client.get(f"/api/hotelier/hotels/{qs[0]['hotel_id']}", headers={"Authorization": f"Bearer {token}"}).json()
+    assert h["boosts"] and h["boosts"][0]["question_id"] == h["questions"][0]["id"]
+    m = client.get("/api/metrics").json()["eval"]["demand"]
+    assert 0 < m["top_share"] <= 1 and m["demand_queries"] > 50

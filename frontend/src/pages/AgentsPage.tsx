@@ -21,7 +21,7 @@ export default function AgentsPage() {
   const runs = useAsync<{ items: Run[] }>(() => api.runs("?limit=25"), []);
   const changes = useAsync<{ items: any[] }>(() => api.changes(), []);
   const conflicts = useAsync<{ items: Conflict[] }>(() => api.conflicts("?status=open&limit=30"), []);
-  const questions = useAsync<{ items: Question[] }>(() => api.questions("?status=open&limit=12"), []);
+  const questions = useAsync<{ items: Question[] }>(() => api.questions("?status=open&limit=12&order=utility"), []);
   const hotels = useAsync<{ items: HotelListItem[] }>(() => api.hotels(), []);
   const [selRun, setSelRun] = useState<number | null>(null);
   const [drawer, setDrawer] = useState<{ id: number; title: string } | null>(null);
@@ -180,6 +180,7 @@ export default function AgentsPage() {
             <div key={q.id} className="qcard open">
               <div className="tiny muted"><Link to={`/hotelier?hotel=${encodeURIComponent(q.hotel_id)}`}>{q.hotel_name}</Link> · {(q.titles || []).join(", ")}</div>
               <div className="small mt-s">{q.text}</div>
+              {q.utility && <div className="tiny utility mt-s">{q.utility.score > 0 ? "↑ " : ""}{q.utility.text}</div>}
               <button className="btn small mt-s" onClick={async () => { const r = await api.simulate(q.id); toast.show(`Отельер ответил: ${r.question.answer_text}`); refresh(); }}>Ответить за отельера (симуляция)</button>
             </div>
           ))}
