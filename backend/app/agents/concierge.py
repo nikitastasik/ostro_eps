@@ -183,7 +183,7 @@ def hotel_text(key: str, rv: ResolvedValue | None) -> str:
         if v.get("steps"):
             extras.append("лестницы")
         if v.get("major_crossings"):
-            extras.append("переход через " + ", ".join(sorted({c["road"] for c in v.get("crossings", [])}))[:60])
+            extras.append("переход через дорогу: " + ", ".join(sorted({c["road"] for c in v.get("crossings", [])}))[:60])
         if v.get("rail") and v["rail"] != "none":
             extras.append({"underpass": "подземный переход под ж/д", "bridge": "мост над ж/д", "level": "через ж/д пути"}[v["rail"]])
         return s + (f" ({'; '.join(extras)})" if extras else "")

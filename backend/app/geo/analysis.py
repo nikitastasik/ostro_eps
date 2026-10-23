@@ -165,7 +165,8 @@ class HotelGeo:
             widths = {}
             nearest = None
             for fl, r in v["floors"].items():
-                w = int(np.sum(r["sea_vis"] & win))
+                # лучи через 1° с краями окна включительно: ±60° — это 121 луч, ширина сектора не больше окна
+                w = min(int(np.sum(r["sea_vis"] & win)), 2 * WINDOW_HALF)
                 widths[fl] = w
                 if w and nearest is None:
                     nearest = float(np.nanmin(np.where(win, r["sea_d"], np.nan)))
@@ -214,7 +215,8 @@ class HotelGeo:
             s += f" (обзор до {bf[main]['max_width_deg']}°)"
             others = [k for k in sides[1:]]
             if others:
-                s += "; также из окон " + ", ".join(f"{facade_gen(k)} стороны — с {bf[k]['min_floor']}-го этажа" for k in others[:2])
+                s += "; также из окон " + ", ".join(f"{facade_gen(k)} стороны — с {bf[k]['min_floor']}-го этажа "
+                                                    f"(до {bf[k]['max_width_deg']}°)" for k in others[:2])
             low = bf[main].get("blocked_low_by")
             if bf[main]["min_floor"] and bf[main]["min_floor"] > 1 and low:
                 s += f". Ниже обзор закрывают {low}"
@@ -224,7 +226,7 @@ class HotelGeo:
             k = glimpse[0]
             return f"Море видно лишь краешком (до {bf[k]['max_width_deg']}°) из окон {facade_gen(k)} стороны с {bf[k]['glimpse_floor']}-го этажа"
         blockers = [bf[k].get("blocked_low_by") for k in bf if bf[k].get("blocked_low_by")]
-        tail = f": обзор закрывают {blockers[0]}" if blockers else ""
+        tail = f" — обзор закрывают {blockers[0]}" if blockers else ""
         if len(self.floors) <= 1:
             return f"Из окон море не видно{tail}"
         return f"Из окон море не видно ни с одного этажа (проверено до {self.floors[-1]}-го){tail}"
@@ -326,7 +328,7 @@ class HotelGeo:
         for key, v in self.view.items():
             f = v["facade"]
             win = np.abs(angle_diff(v["az"], f.normal_az)) <= WINDOW_HALF
-            widths = {fl: int(np.sum(r["mtn_vis"] & win)) for fl, r in v["floors"].items()}
+            widths = {fl: min(int(np.sum(r["mtn_vis"] & win)), 2 * WINDOW_HALF) for fl, r in v["floors"].items()}
             min_floor = next((fl for fl in sorted(widths) if widths[fl] >= 5), None)
             by_facade[key] = {"available": min_floor is not None, "min_floor": min_floor,
                               "max_width_deg": max(widths.values()) if widths else 0}
@@ -403,7 +405,7 @@ class HotelGeo:
         value = {"available": bool(seen), "landmarks": seen,
                  "min_floor": min((x["min_floor"] for x in seen), default=None), "by_facade": by_facade}
         if seen:
-            value["summary"] = "Из окон видно: " + "; ".join(
+            value["summary"] = "Видны ориентиры: " + "; ".join(
                 f"{x['name']} — из окон {facade_gen(x['facade'])} стороны с {x['min_floor']}-го этажа" for x in seen[:4])
         else:
             value["summary"] = "Ни один из городских ориентиров не попадает в прямую видимость из окон"

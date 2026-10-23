@@ -58,7 +58,8 @@ def areas_near(ctx, cats: set[str], radius: float) -> list[tuple[dict, float]]:
 
 
 def _fmt_m(d: float) -> str:
-    return f"{d / 1000:.1f} км".replace(".", ",") if d >= 1000 else f"{round(d / 10) * 10:.0f} м"
+    # «0 м» для объекта в том же здании выглядит как ошибка — округляем до 10 м
+    return f"{d / 1000:.1f} км".replace(".", ",") if d >= 1000 else f"{max(10, round(d / 10) * 10):.0f} м"
 
 
 # ----------------------------------------------------------------------------------------
@@ -224,7 +225,7 @@ def car(ctx, params) -> ToolResult:
     }
     parts = []
     if value["car_to_door"]:
-        parts.append(f"можно подъехать к зданию (проезд в {road_m} м)")
+        parts.append("можно подъехать прямо к зданию" if road_m < 5 else f"можно подъехать к зданию (проезд в {road_m} м)")
     elif road_m is not None:
         parts.append(f"ближайший проезд в {road_m} м от здания — к самому входу не подъехать")
     if value["pedestrian_zone"]:
@@ -252,7 +253,8 @@ def green_walk(ctx, params) -> ToolResult:
     if park:
         pname = f" {quote(value['park_name'])}" if value["park_name"] else ""
         parts.append(f"парк или сквер{pname} прямо у отеля" if value["park_m"] < 60 else f"парк{pname} в {_fmt_m(park[0].length_m)} пешком")
-    parts.append(f"зелёных зон в 500 м: {value['green_ha_500m']} га".replace(".", ","))
+    parts.append(f"зелёных зон в 500 м: {value['green_ha_500m']} га".replace(".", ",") if green >= 1000
+                 else "зелёных зон в 500 м почти нет")
     parts.append(f"площадка для собак в {_fmt_m(dog_d)}" if dog_d is not None else "специальных площадок для собак рядом нет")
     return ToolResult(value, cap("; ".join(parts)), 0.66, "osm", _detail(ctx, "leisure=park/garden/dog_park"))
 

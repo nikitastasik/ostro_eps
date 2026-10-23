@@ -186,7 +186,7 @@ def walk_beach(ctx, params) -> ToolResult:
     if value["steps"]:
         parts.append("есть лестницы")
     if major:
-        parts.append("переход через " + ", ".join(sorted({c['road'] for c in major}))
+        parts.append("переход через дорогу: " + ", ".join(sorted({c['road'] for c in major}))
                      + (" (светофор)" if all(c["signals"] for c in major) else ""))
     if value["rail"] != "none":
         parts.append(_rail_ru(value["rail"]))

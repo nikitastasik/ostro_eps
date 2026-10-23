@@ -8,7 +8,7 @@ const OP_RU: Record<string, string> = { le: "≤", ge: "≥", lt: "<", gt: ">", 
 const MONTHS_PREP = ["январе", "феврале", "марте", "апреле", "мае", "июне", "июле", "августе", "сентябре", "октябре", "ноябре", "декабре"];
 
 const FIELD_UNIT: Record<string, string> = {
-  night_db: " дБ ночью", minutes_to: " мин пешком", walk_m: " м пешком", climb_back_m: " м подъёма", park_m: " м до парка",
+  night_db: " дБ", minutes_to: " мин пешком", walk_m: " м пешком", climb_back_m: " м подъёма", park_m: " м до парка",
   station_minutes: " мин до станции", levels: " эт.", max_weight_kg: " кг", wifi_mbps: " Мбит/с", min_floor: "-го этажа",
 };
 

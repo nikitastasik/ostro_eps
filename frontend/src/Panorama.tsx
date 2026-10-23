@@ -47,7 +47,8 @@ export default function Panorama({ hotelId, initialFacade }: { hotelId: string; 
     const bars = data.azimuths.map((az, i) => ({ x: x(az) - step / 2, y: y(data.horizon[i]), cls: data.sky_cls[i], sea: data.sea_vis[i], h: data.horizon[i], d: data.sky_d[i] }));
     const winHalf = data.window_half;
     const inWindow = (az: number) => Math.abs(diff(az, n)) <= winHalf;
-    const seaWidth = data.azimuths.filter((az, i) => data.sea_vis[i] && inWindow(az)).length;
+    // лучи идут через 1° включая края окна (−60…+60 — это 121 луч), поэтому ограничиваем шириной окна
+    const seaWidth = Math.min(2 * winHalf, data.azimuths.filter((az, i) => data.sea_vis[i] && inWindow(az)).length);
     const sunsets = data.suns.map((s) => {
       const dd = diff(s.azimuth, n);
       const visibleSide = Math.abs(dd) <= span / 2;
@@ -119,7 +120,7 @@ export default function Panorama({ hotelId, initialFacade }: { hotelId: string; 
               return (
                 <g>
                   <circle cx={last.x} cy={last.y} r={s.seen ? 7 : 4} fill={s.seen ? "#ffb02e" : "#f3d39a"} stroke="white" strokeWidth={1.5} />
-                  <text x={last.x} y={last.y - 12 - (s.month % 3) * 12} fontSize={11} textAnchor="middle" fill="#7a4a00" fontWeight={700}>{MONTHS[s.month - 1]}</text>
+                  <text x={Math.min(W - 16, Math.max(16, last.x))} y={last.y - 12 - (s.month % 3) * 12} fontSize={11} textAnchor="middle" fill="#7a4a00" fontWeight={700}>{MONTHS[s.month - 1]}</text>
                 </g>
               );
             })()}
@@ -158,7 +159,7 @@ export default function Panorama({ hotelId, initialFacade }: { hotelId: string; 
       </div>
       <p className="small mt-s">
         <b>{data.facade}-сторона, {data.floor}-й этаж</b> (глаза на высоте {Math.round(data.eye_z)} м над уровнем моря):{" "}
-        {view.seaWidth > 0 ? <>море видно в секторе ≈{view.seaWidth}° из 120° обзора окна. </> : <>моря из этого окна не видно. </>}
+        {view.seaWidth > 0 ? <>море видно в секторе ≈{view.seaWidth}° из {2 * view.winHalf}° обзора окна. </> : <>моря из этого окна не видно. </>}
         {seenMonths.length > 0
           ? <>Закат виден: {seenMonths.map((s) => `${MONTHS[s.month - 1]}${s.overSea ? " (над морем)" : ""}`).join(", ")}.</>
           : <>Закат из этого окна не виден.</>}
