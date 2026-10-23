@@ -80,6 +80,9 @@ def parse_query(text: str, specs: dict[str, dict]) -> ParsedQuery:
         for key, spec in specs.items():
             srch = spec.get("search") or {}
             base_hit = _match_any(toks, srch.get("phrases", []))
+            if not base_hit and _match_any(toks, srch.get("numeric_anchors", [])) and any(
+                    number_before(clause, UNITS[n["unit"]]) is not None for n in srch.get("numeric", [])):
+                base_hit = clause
             variant_hits = []
             for var in srch.get("variants", []):
                 hit = _match_any(toks, var.get("phrases", []))

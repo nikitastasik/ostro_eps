@@ -8,7 +8,7 @@ import HotelPage from "./pages/HotelPage";
 import HotelsPage from "./pages/HotelsPage";
 import MetricsPage from "./pages/MetricsPage";
 import SearchPage from "./pages/SearchPage";
-import { Icon, useAsync, useCompare } from "./ui";
+import { Icon, plural, useAsync, useCompare } from "./ui";
 
 function CompareBar() {
   const cmp = useCompare();
@@ -33,7 +33,7 @@ export default function App() {
       <header className="topbar">
         <NavLink to="/" className="brand">
           <span className="brand-logo"><Icon name="compass" size={18} stroke={2.2} /></span>
-          <span>Островок · Знания об отелях<small>{m ? `${m.region.name} · ${m.hotels} отелей · ${m.characteristics} характеристик` : "загрузка…"}</small></span>
+          <span>Островок · Знания об отелях<small>{m ? `${m.region.name} · ${m.hotels} ${plural(m.hotels, "отель", "отеля", "отелей")} · ${m.characteristics} ${plural(m.characteristics, "характеристика", "характеристики", "характеристик")}` : "загрузка…"}</small></span>
         </NavLink>
         <nav className="nav">
           <NavLink to="/" end>Поиск</NavLink>

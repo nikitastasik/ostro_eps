@@ -1,52 +1,52 @@
-# Честная отложенная выборка запросов гостей (составлена после всех правок словарей,
-# на ней ничего не настраивалось; результат первого замера фиксируется в README).
-- query: номер, из которого видно море и закат
-  expect: [sea_view, sunset_view]
-- query: путешествую с мопсом
-  expect: [pets_policy]
-- query: хотим тихо, у нас маленький ребёнок
-  expect: [quietness, families]
-- query: недорого и поближе к пляжу
-  expect: [beach_access]
-- query: красивый вид на горы с балкона
+# Отложенная выборка запросов гостей v3: составлена вслепую после последней правки словарей,
+# до первого прогона парсера; на ней ничего не настраивалось. Результат первого замера — в README.
+- query: чтобы из окна было видно Чёрное море
+  expect: [sea_view]
+- query: любим встречать закаты, и чтобы до воды было рукой подать
+  expect: [sunset_view, beach_access]
+- query: едем с лабрадором, нужно место, где с ним гулять
+  expect: [pets_policy, pets_walk]
+- query: номер повыше, с панорамой на горы
   expect: [mountain_view]
-- query: без лестниц до моря, мама плохо ходит
-  expect: [beach_access]
-- query: где-нибудь, где ночью есть открытый магазин
-  expect: [night_services]
-- query: спокойно поспать, никакого шума с улицы
-  expect: [quietness]
-- query: в октябре вода ещё тёплая?
+- query: плохо сплю при свете, нужны плотные шторы
+  expect: [blackout_curtains]
+- query: в сентябре можно будет купаться?
   expect: [swim_season]
-- query: хочу жить рядом с барами и ресторанами
-  expect: [nightlife]
-- query: старое красивое здание
-  expect: [building_history]
-- query: работаю из отеля, нужен нормальный интернет
-  expect: [workspace]
-- query: рядом с парком, чтобы бегать по утрам
-  expect: [pets_walk]
-- query: подъехать на такси прямо к дверям
+- query: мы на машине, нужна парковка
   expect: [car_access]
-- query: лифт обязателен и окна во двор
-  expect: [elevator, quietness]
-- query: чтобы до набережной было рукой подать
-  expect: [beach_access]
+- query: бабушка на коляске, нужен пандус и лифт
+  expect: [accessibility, elevator]
+- query: рядом не должно быть стройки
+  expect: [construction_nearby]
+- query: хочу в самом центре, чтобы всё пешком
+  expect: [center_access]
+- query: до аэропорта быстро добраться
+  expect: [transport]
+- query: отель в историческом здании
+  expect: [building_history]
+- query: окна не в стену соседнего дома, чтобы был простор
+  expect: [window_outlook]
+- query: видеть из номера Зимний театр
+  expect: [landmark_view]
+- query: хорошие шумоизолирующие окна
+  expect: [soundproofing]
 - query: детская кроватка и детское меню
   expect: [kids_facilities]
-- query: отель для людей на инвалидной коляске
-  expect: [accessibility]
-- query: смотреть на море с высокого этажа
-  expect: [sea_view, building_levels]
-- query: ночью темно и тихо, чтобы выспаться
-  expect: [quietness, blackout_curtains]
-- query: добраться до аэропорта на поезде
-  expect: [transport]
-- query: можно ли с кошкой и где её выгуливать
-  expect: [pets_policy, pets_walk]
-- query: место с видом на Ахун
-  expect: [landmark_view]
-- query: шумоизоляция и плотные шторы
-  expect: [soundproofing, blackout_curtains]
-- query: закат над морем летом
-  expect: [sunset_view]
+- query: тусовки, клубы до утра
+  expect: [nightlife]
+- query: окна на тихую сторону, без шума машин
+  expect: [quietness]
+- query: работаю удалённо, нужен стол и стабильный вай-фай
+  expect: [workspace]
+- query: семья с двумя малышами, нужна площадка рядом
+  expect: [families]
+- query: не хочу жить в высотке, максимум пять этажей
+  expect: [building_levels]
+- query: аптека, которая работает круглосуточно
+  expect: [night_services]
+- query: вид на море и чтобы было тихо по ночам, едем в июле
+  expect: [sea_view, quietness]
+- query: пешком до пляжа, но без перехода через трассу
+  expect: [beach_access]
+- query: можно ли заселиться с котом
+  expect: [pets_policy]

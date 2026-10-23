@@ -225,6 +225,8 @@ class HotelGeo:
             return f"Море видно лишь краешком (до {bf[k]['max_width_deg']}°) из окон {facade_gen(k)} стороны с {bf[k]['glimpse_floor']}-го этажа"
         blockers = [bf[k].get("blocked_low_by") for k in bf if bf[k].get("blocked_low_by")]
         tail = f": обзор закрывают {blockers[0]}" if blockers else ""
+        if len(self.floors) <= 1:
+            return f"Из окон море не видно{tail}"
         return f"Из окон море не видно ни с одного этажа (проверено до {self.floors[-1]}-го){tail}"
 
     # ------------------------------------------------------------------
@@ -359,7 +361,7 @@ class HotelGeo:
         if avail:
             s = f"Горы видны из окон {facade_gen(best)} стороны с {min_floor}-го этажа"
             if peaks:
-                s += ": " + ", ".join(f"{p['name']} ({p['ele']} м, {p['dist_km']} км)" for p in peaks[:3])
+                s += ": " + ", ".join(f"{p['name']} ({p['ele']} м, {p['dist_km']} км)".replace(".", ",") for p in peaks[:3])
             value["summary"] = s
         else:
             value["summary"] = "Горы из окон не видны — обзор закрывают соседние здания и ближние склоны"
@@ -402,7 +404,7 @@ class HotelGeo:
                  "min_floor": min((x["min_floor"] for x in seen), default=None), "by_facade": by_facade}
         if seen:
             value["summary"] = "Из окон видно: " + "; ".join(
-                f"{x['name']} — {facade_gen(x['facade'])} сторона с {x['min_floor']}-го этажа" for x in seen[:4])
+                f"{x['name']} — из окон {facade_gen(x['facade'])} стороны с {x['min_floor']}-го этажа" for x in seen[:4])
         else:
             value["summary"] = "Ни один из городских ориентиров не попадает в прямую видимость из окон"
         return value
@@ -439,11 +441,14 @@ class HotelGeo:
         tight = sorted((k for k, v in by_facade.items() if v["wall_m_floor1"] is not None and v["wall_m_floor1"] < 25),
                        key=lambda k: by_facade[k]["wall_m_floor1"])
         if tight:
-            parts.append("на нижних этажах окна " + ", ".join(f"{facade_gen(k)} стороны смотрят на соседний дом в {by_facade[k]['wall_m_floor1']} м"
-                                                                for k in tight[:2]))
+            first, *rest = tight[:2]
+            parts.append(f"на нижних этажах окна {facade_gen(first)} стороны смотрят на соседний дом в "
+                         f"{by_facade[first]['wall_m_floor1']} м"
+                         + "".join(f", {facade_gen(k)} — в {by_facade[k]['wall_m_floor1']} м" for k in rest))
         green = [k for k, v in by_facade.items() if v["first_obstacle"] == "trees" and (v["first_obstacle_m"] or 99) < 30]
         if green:
-            parts.append("окна " + ", ".join(facade_gen(k) for k in green[:2]) + " стороны выходят в зелень деревьев")
+            parts.append("окна " + " и ".join(facade_gen(k) for k in green[:2])
+                         + (" сторон" if len(green) > 1 else " стороны") + " выходят в зелень деревьев")
         opened = [k for k, v in by_facade.items() if v["open_view"]]
         if opened:
             k = min(opened, key=lambda k: by_facade[k]["open_from_floor"])

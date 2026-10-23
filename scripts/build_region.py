@@ -22,7 +22,7 @@ import math
 import os
 import re
 import sys
-from collections import Counter, defaultdict
+from collections import Counter
 
 import numpy as np
 import osmium
@@ -229,7 +229,7 @@ class Collector(osmium.SimpleHandler):
             for ring, holes in polys:
                 self.buildings.append({"osm": osm, "ring": ring, "holes": holes, "tags": t})
         if t.get("building:part") and t.get("building:part") != "no":
-            for ring, holes in polys:
+            for ring, _holes in polys:
                 self.building_parts.append({"osm": osm, "ring": ring, "tags": t})
         if t.get("tourism") in HOTEL_KINDS:
             ring = max(polys, key=lambda p: len(p[0]))[0]
@@ -293,7 +293,7 @@ def load_dem(dem_dir: str):
     nx = int(round((lon_max - lon_min) / res))
     ny = int(round((lat_max - lat_min) / res))
     mosaic = np.full((ny, nx), np.nan, dtype=np.float32)
-    for a, lon0, lat0, sx, sy in tiles:
+    for a, lon0, lat0, _sx, _sy in tiles:
         c0 = int(round((lon0 - lon_min) / res))
         r0 = int(round((lat_max - lat0) / res))
         mosaic[r0:r0 + a.shape[0], c0:c0 + a.shape[1]] = a

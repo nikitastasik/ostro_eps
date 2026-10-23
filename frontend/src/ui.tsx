@@ -108,6 +108,15 @@ export function fmtDate(iso?: string | null, withTime = false) {
     : { day: "numeric", month: "short", year: "numeric" });
 }
 
+/** Форма слова для числа: 1 вопрос, 3 вопроса, 5 вопросов. */
+export function plural(n: number, one: string, few: string, many: string) {
+  const a = Math.abs(n) % 100;
+  const b = a % 10;
+  if (a > 10 && a < 20) return many;
+  if (b > 1 && b < 5) return few;
+  return b === 1 ? one : many;
+}
+
 export function pct(v: number | null | undefined, digits = 0) {
   if (v === null || v === undefined || Number.isNaN(v)) return "—";
   return `${(v * 100).toFixed(digits)}%`;

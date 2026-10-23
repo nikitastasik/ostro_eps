@@ -12,6 +12,7 @@ from .. import llm
 from ..knowledge.registry import get_spec
 from ..models import Fact, Hotel, Question, utcnow
 from ..nlp.answer_parser import parse_answer
+from ..tools.base import plural
 from . import arbiter
 
 ANIMALS_RU = {"dog": "собаки", "cat": "кошки", "bird": "птицы", "rodent": "грызуны"}
@@ -20,6 +21,9 @@ SIDE_RU = {"sea": "на море", "courtyard": "во двор", "street": "на
 WINDOWS_RU = {"standard": "обычные стеклопакеты (≈−25 дБ)", "soundproof": "шумозащитные окна (≈−32 дБ)",
               "triple": "тройные стеклопакеты (≈−36 дБ)"}
 WHEEL_RU = {"yes": "доступен для гостей на коляске", "limited": "доступен частично", "no": "не приспособлен для коляски"}
+VALUE_RU = {**ANIMALS_RU, **SIDE_RU, "night": "за сутки", "stay": "за проживание", "all": "во всех номерах",
+            "some": "в части номеров"}
+FIELD_VALUES_RU = {"windows": WINDOWS_RU, "wheelchair": WHEEL_RU}
 
 
 def _yn(v) -> str:
@@ -73,7 +77,8 @@ def render_summary(spec: dict, f: dict) -> str:
             parts.append(f"{c['name']} — {side}{fl_txt}")
         return p + "; ".join(parts)
     if k == "building_levels":
-        return p + f"{f.get('levels')} этажей"
+        lv = f.get("levels")
+        return p + (f"{lv} {plural(lv, 'этаж', 'этажа', 'этажей')}" if isinstance(lv, (int, float)) else "этажность не указана")
     if k == "building_history":
         parts = []
         if f.get("year_built"):
@@ -137,6 +142,33 @@ def ask_hotelier(session: Session, hotel: Hotel, spec: dict, reason: str = "miss
     return q, True
 
 
+def _lower_first(text: str) -> str:
+    """«Из окон…» → «из окон…» внутри фразы; аббревиатуры («ЖК …») не трогаем."""
+    return text[:1].lower() + text[1:] if text[1:2].islower() else text
+
+
+def _field_title(spec: dict, key: str) -> str:
+    vf = {**spec.get("value_fields", {}), **spec.get("extra_fields", {})}
+    return _lower_first((vf.get(key) or {}).get("title") or key)
+
+
+def _fields_text(spec: dict, fields: dict) -> str:
+    """Поля ответа для журнала: «максимальный вес — 10; доплата — 500»."""
+    def fmt(k, v):
+        names = FIELD_VALUES_RU.get(k, VALUE_RU)
+        if isinstance(v, bool):
+            return "да" if v else "нет"
+        if isinstance(v, list) and all(isinstance(x, dict) for x in v):
+            return ", ".join(f"{x.get('name', '?')}: {SIDE_RU.get(x.get('side'), x.get('side') or x.get('facade') or '?')}"
+                             for x in v) or "—"
+        if isinstance(v, list):
+            return ", ".join(str(names.get(x, x)) for x in v) or "—"
+        if isinstance(v, dict):
+            return json.dumps(v, ensure_ascii=False)
+        return str(names.get(v, v)) if isinstance(v, str) else f"{v:g}" if isinstance(v, float) else str(v)
+    return "; ".join(f"{_field_title(spec, k)} — {fmt(k, v)}" for k, v in fields.items())
+
+
 def ask_clarification(session: Session, hotel_id: str, spec: dict, primary: Fact, other: Fact, fld: dict, a, b,
                       run_id: int | None = None) -> Question | None:
     for q in session.scalars(select(Question).where(Question.hotel_id == hotel_id, Question.status == "open")):
@@ -145,7 +177,7 @@ def ask_clarification(session: Session, hotel_id: str, spec: dict, primary: Fact
     base = (spec.get("question") or {}).get("text") or f"Уточните, пожалуйста: {spec['title'].lower()}?"
     src = arbiter.SOURCE_RU
     if other.source in {"hotelier", "hotelier_confirmed"}:
-        text = (f"Наш расчёт ({src.get(primary.source, primary.source)}) показывает: {primary.summary.rstrip('.')}. "
+        text = (f"По нашим данным ({src.get(primary.source, primary.source)}): {_lower_first(primary.summary.rstrip('.'))}. "
                 f"В вашем ответе: {other.summary.replace('Со слов отельера: ', '').rstrip('.')}. "
                 f"Помогите разобраться — {base[0].lower() + base[1:]}")
     else:
@@ -205,8 +237,9 @@ def answer_question(session: Session, question: Question, text: str, answered_by
         if logger:
             logger.step("Интервьюер", "llm" if method == "llm" else "decision",
                         f"Ответ разобран ({'LLM' if method == 'llm' else 'правила'}): "
-                        f"{json.dumps(parsed['fields'], ensure_ascii=False)}"
-                        + (f"; не удалось извлечь: {', '.join(parsed['missing'])}" if parsed["missing"] else ""),
+                        f"{_fields_text(spec, parsed['fields']) or 'ничего не извлечено'}"
+                        + (f"; в ответе нет: {', '.join(_field_title(spec, f) for f in parsed['missing'])}"
+                           if parsed["missing"] else ""),
                         char_key=key, payload=parsed)
         result[key] = {**parsed, "method": method}
         if not parsed["fields"]:
@@ -229,7 +262,8 @@ def answer_question(session: Session, question: Question, text: str, answered_by
         rv = arbiter.resolve(session, hotel.id, spec, run_id=getattr(logger, "run_id", None), logger=logger,
                              reason="hotelier_answer")
         if logger:
-            logger.step("Арбитр", "result", f"Итог: {rv.summary} (уверенность {rv.confidence:.2f}, статус {rv.status})",
+            logger.step("Арбитр", "result", f"Итог «{spec['title']}»: {rv.summary or '—'} "
+                        f"[{arbiter.STATUS_RU.get(rv.status, rv.status)}, уверенность {rv.confidence:.2f}]",
                         char_key=key, payload={"status": rv.status, "confidence": rv.confidence})
     question.parsed = result
     question.parse_method = next((v["method"] for v in result.values()), None)

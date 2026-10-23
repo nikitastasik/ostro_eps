@@ -4,7 +4,7 @@ import { api, CharValue, Fact, GeoData, HotelCard, Run } from "../api";
 import MapView from "../MapView";
 import Panorama from "../Panorama";
 import RunLog, { RunDrawer } from "../RunLog";
-import { Confidence, ErrorBox, fmtDate, Icon, KIND_RU, Sources, Spinner, StatusBadge, useAsync, useCompare, useToast } from "../ui";
+import { Confidence, ErrorBox, fmtDate, Icon, KIND_RU, plural, Sources, Spinner, StatusBadge, useAsync, useCompare, useToast } from "../ui";
 
 function noiseColor(db?: number) {
   if (db == null) return "#9aa6b8";
@@ -144,6 +144,7 @@ export default function HotelPage() {
   const sea = h.groups.flatMap((x) => x.items).find((x) => x.key === "sea_view");
   const bestFacade = (sea?.value as any)?.best_facade as string | undefined;
   const beach = g?.routes?.beach_access;
+  const openQs = (h.questions || []).filter((q) => q.status === "open").length;
   const lines: { points: [number, number][]; color: string; weight?: number; dash?: string; title?: string; noFit?: boolean }[] = [];
   if (beach) lines.push({ points: beach.line, color: "#0a6cff", weight: 5, title: "Пешком до пляжа" });
   if (g?.routes?.center_access) lines.push({ points: g.routes.center_access.line, color: "#7c4ddb", weight: 3, dash: "6 6", title: "Пешком до центра", noFit: true });
@@ -162,7 +163,7 @@ export default function HotelPage() {
           </div>
           <div className="row mt-s">
             <span className="chip accent">Знаем {h.known} из {h.total} характеристик</span>
-            {(h.questions || []).filter((q) => q.status === "open").length > 0 && <span className="chip violet">{(h.questions || []).filter((q) => q.status === "open").length} вопросов ждут отельера</span>}
+            {openQs > 0 && <span className="chip violet">{openQs} {plural(openQs, "вопрос ждёт", "вопроса ждут", "вопросов ждут")} отельера</span>}
             {(h.conflicts || []).filter((c) => c.status === "open").length > 0 && <span className="chip bad">противоречий: {(h.conflicts || []).filter((c) => c.status === "open").length}</span>}
           </div>
         </div>
@@ -204,6 +205,7 @@ export default function HotelPage() {
             <div className="legend">
               <span><i style={{ background: "#14a05a" }} />тихо ночью</span><span><i style={{ background: "#e3b100" }} />умеренно</span>
               <span><i style={{ background: "#e0464b" }} />шумно</span><span><i style={{ background: "#0a6cff" }} />путь до пляжа</span>
+              {g?.routes?.center_access && <span><i style={{ background: "#7c4ddb" }} />пунктир — путь до центра</span>}
             </div>
             {beach && <div className="mt-s"><div className="small"><b>Профиль пути до пляжа:</b> {beach.summary}</div><Profile profile={beach.profile} /></div>}
           </div>

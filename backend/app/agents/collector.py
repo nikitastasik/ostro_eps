@@ -110,8 +110,7 @@ def collect(ctx: HotelContext, spec: dict, run_id: int | None, logger, reason: s
     rv = arbiter.resolve(ctx.session, ctx.hotel.id, spec, run_id=run_id, logger=logger, reason=reason)
     if key == "building_levels":
         ctx.reset_geo()
-    status_ru = {"ok": "готово", "conflict": "противоречие", "stale": "устарело", "unknown": "нет данных",
-                 "asked": "ждём отельера"}.get(rv.status, rv.status)
+    status_ru = arbiter.STATUS_RU.get(rv.status, rv.status)
     logger.step("Арбитр", "result", f"Итог «{spec['title']}»: {rv.summary or '—'} [{status_ru}, уверенность {rv.confidence:.2f}]",
                 char_key=key, payload={"status": rv.status, "confidence": rv.confidence, "sources": rv.sources})
     return rv

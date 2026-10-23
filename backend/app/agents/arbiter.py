@@ -22,6 +22,7 @@ SOURCE_RU = {
     "default": "предположение по типу здания", "climate": "климатические данные NOAA", "hotelier": "отельер",
     "hotelier_confirmed": "подтверждено отельером", "moderator": "модератор",
 }
+STATUS_RU = {"ok": "готово", "conflict": "противоречие", "stale": "устарело", "unknown": "нет данных", "asked": "ждём отельера"}
 STALE_FACTOR = 0.6
 
 

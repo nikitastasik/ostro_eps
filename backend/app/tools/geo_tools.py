@@ -8,7 +8,7 @@ import numpy as np
 
 from ..geo.analysis import month_ranges
 from ..geo.sun import angle_diff
-from .base import ToolResult, cap, tool
+from .base import ToolResult, cap, quote, tool
 
 AGENT = "Геоаналитик"
 LEVEL_FACTOR = {"osm_levels": 1.0, "osm_height": 1.0, "osm_parts": 1.0, "hotelier": 1.0, "hotelier_confirmed": 1.0,
@@ -133,6 +133,23 @@ def _rail_ru(kind: str | None) -> str:
             "level": "через железнодорожные пути по наземному переходу"}.get(kind or "", "")
 
 
+def _beach_text(name: str | None, surface_ru: str | None) -> str:
+    """«галечный пляж „Маяк“»: без повторов, когда в названии из OSM уже есть слово «пляж»."""
+    name = " ".join((name or "").split())
+    kind = f"{surface_ru} пляж" if surface_ru else "пляж"
+    if not name or name.lower() == "пляж":
+        return kind
+    if name.lower().startswith("пляж "):
+        rest = name[5:].strip()
+        if rest[:1].isupper() or rest[:1] in "\"«":
+            rest = rest.strip("\"«»")
+            return f"{kind} {quote(rest)}"
+        return f"{kind} {rest}"
+    if "пляж" in name.lower():
+        return name + (f" ({surface_ru})" if surface_ru else "")
+    return f"{kind} {quote(name)}"
+
+
 @tool("geo.walk_beach", "Пеший маршрут до пляжа", AGENT, ["OSM пешеходный граф", "OSM пляжи natural=beach", "Copernicus DEM"],
       "Кратчайший по времени пеший путь до ближайшего пляжа; время по функции Тоблера (уклон), лестницы, переходы, ж/д.",
       applicable=_has_geo, cost="medium")
@@ -174,7 +191,7 @@ def walk_beach(ctx, params) -> ToolResult:
     if value["rail"] != "none":
         parts.append(_rail_ru(value["rail"]))
     if value["beach"]["name"] or surface_ru:
-        parts.append("пляж " + " ".join(x for x in [value["beach"]["name"] and f"«{value['beach']['name']}»", surface_ru] if x))
+        parts.append(_beach_text(value["beach"]["name"], surface_ru))
     conf = 0.86 if start_d < 60 else 0.66
     return ToolResult(value, "; ".join(parts), conf, "geo", detail,
                       evidence={"start_offset_m": round(start_d), "algorithm": "Дейкстра по времени, Тоблер: v = 6·exp(−3.5·|s+0.05|) км/ч"})
@@ -256,13 +273,14 @@ def transport(ctx, params) -> ToolResult:
         return ToolResult(None, "Нет данных о транспорте рядом", 0.0, "geo", detail, status="no_data")
     parts = []
     if "bus_stop_m" in value:
-        parts.append(f"остановка в {value['bus_stop_m']} м" + (f" («{value['bus_stop_name']}»)" if value.get("bus_stop_name") else ""))
+        parts.append(f"остановка в {value['bus_stop_m']} м" + (f" ({quote(value['bus_stop_name'])})" if value.get("bus_stop_name") else ""))
     if "station" in value:
-        parts.append(f"ж/д станция «{value['station']}» — {value['station_minutes']:.0f} мин пешком")
+        parts.append(f"ж/д станция {quote(value['station'])} — {value['station_minutes']:.0f} мин пешком")
         if value.get("airport_train"):
             parts.append("с неё ходят прямые поезда до аэропорта")
     if "airport_drive_min" in value:
-        parts.append(f"до аэропорта ≈{value['airport_drive_min']} мин на машине без пробок ({value['airport_drive_km']} км)")
+        parts.append(f"до аэропорта ≈{value['airport_drive_min']} мин на машине без пробок ({value['airport_drive_km']} км)"
+                     .replace(".", ","))
     return ToolResult(value, cap("; ".join(parts)), 0.7, "geo", detail,
                       evidence={"drive_speeds": "городские скорости по классу дороги, без учёта пробок"})
 

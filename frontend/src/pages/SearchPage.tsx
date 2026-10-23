@@ -12,12 +12,30 @@ const FIELD_UNIT: Record<string, string> = {
   station_minutes: " мин до станции", levels: " эт.", max_weight_kg: " кг", wifi_mbps: " Мбит/с", min_floor: "-го этажа",
 };
 
-function critText(c: Criterion & { field_title?: string }) {
-  const month = c.month ? ` в ${MONTHS_PREP[c.month - 1]}` : "";
+type Crit = Criterion & { field_title?: string };
+
+function critDetail(c: Crit) {
   const simple = c.op === "eq" || c.op === "nonempty" || c.op === "in" || c.op === "contains" || (c.op === "ge" && c.value === 1);
-  if (simple) return `${c.label}${month}`;
+  if (simple) return "";
   const unit = FIELD_UNIT[c.field] ?? (c.field_title ? ` (${c.field_title.toLowerCase()})` : "");
-  return `${c.label}: ${OP_RU[c.op] || c.op} ${Math.round(Number(c.value) * 10) / 10}${unit}${month}`;
+  return `${OP_RU[c.op] || c.op} ${Math.round(Number(c.value) * 10) / 10}${unit}`;
+}
+
+/** Один чип на пожелание: критерии одной характеристики с одной подписью («Пляж без подъёмов и лестниц») — вместе. */
+function groupCriteria(criteria: Crit[]) {
+  const groups: { idx: number[]; crits: Crit[] }[] = [];
+  criteria.forEach((c, i) => {
+    const g = groups.find((x) => x.crits[0].key === c.key && x.crits[0].label === c.label && x.crits[0].month === c.month);
+    if (g) { g.idx.push(i); g.crits.push(c); } else groups.push({ idx: [i], crits: [c] });
+  });
+  return groups;
+}
+
+function critText(crits: Crit[]) {
+  const c = crits[0];
+  const month = c.month ? ` в ${MONTHS_PREP[c.month - 1]}` : "";
+  const details = crits.map(critDetail).filter(Boolean);
+  return `${c.label}${details.length ? `: ${details.join(", ")}` : ""}${month}`;
 }
 
 function ResultCard({ r, rank, hl, onHover }: { r: SearchResult; rank: number; hl: boolean; onHover: (id: string | null) => void }) {
@@ -91,9 +109,9 @@ export default function SearchPage({ meta }: { meta: Meta | null }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const removeCriterion = (i: number) => {
+  const removeCriteria = (idx: number[]) => {
     if (!res) return;
-    const crit = res.query.criteria.filter((_, j) => j !== i);
+    const crit = res.query.criteria.filter((_, j) => !idx.includes(j));
     if (crit.length === 0) { setRes(null); return; }
     run(text, crit);
   };
@@ -127,12 +145,15 @@ export default function SearchPage({ meta }: { meta: Meta | null }) {
             <div className="understood">
               <b className="small">Как агент понял запрос</b>
               <span className={`chip ${res.query.parser === "llm" ? "violet" : "ghost"}`}>{res.query.parser === "llm" ? "LLM" : res.query.parser === "manual" ? "вручную" : "правила"}</span>
-              {res.query.criteria.map((c, i) => (
-                <span key={i} className={`chip ${c.required ? "warn" : "accent"}`} title={c.source_text ? `из фразы «${c.source_text}»` : undefined}>
-                  {critText(c)}{c.weight > 1 ? " · важно" : c.weight < 1 ? " · желательно" : ""}
-                  <span className="x" onClick={() => removeCriterion(i)}>✕</span>
-                </span>
-              ))}
+              {groupCriteria(res.query.criteria).map(({ idx, crits }) => {
+                const c = crits[0];
+                return (
+                  <span key={idx.join("-")} className={`chip ${c.required ? "warn" : "accent"}`} title={c.source_text ? `из фразы «${c.source_text}»` : undefined}>
+                    {critText(crits)}{c.weight > 1 ? " · важно" : c.weight < 1 ? " · желательно" : ""}
+                    <span className="x" onClick={() => removeCriteria(idx)}>✕</span>
+                  </span>
+                );
+              })}
               {res.query.criteria.length === 0 && <span className="muted small">не нашёл знакомых характеристик</span>}
             </div>
             <span className="small muted">{results.length} подходящих из {res.total}</span>

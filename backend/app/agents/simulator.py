@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from .. import llm
 from ..models import Hotel, Question, ResolvedValue
+from ..tools.base import plural
 
 
 def _rng(hotel_id: str, salt: str) -> random.Random:
@@ -107,7 +108,8 @@ def rule_answer(session: Session, hotel: Hotel, key: str, question: Question) ->
         fee = "бесплатно" if t["parking_fee"] == 0 else f"{t['parking_fee']} рублей в сутки"
         return f"Своя парковка есть, {fee}. Подъехать к входу можно."
     if key == "building_levels":
-        return _pick(r, f"В здании {t['levels']} этажей.", f"У нас {t['levels']} этажей, номера на всех этажах кроме первого.")
+        lv = f"{t['levels']} {plural(t['levels'], 'этаж', 'этажа', 'этажей')}"
+        return _pick(r, f"В здании {lv}.", f"У нас {lv}, номера на всех этажах кроме первого.")
     if key == "building_history":
         if t["year"]:
             return f"Здание построено в {t['year']} году." + (" Это памятник архитектуры." if t["year"] < 1960 and r.random() < 0.5 else "")

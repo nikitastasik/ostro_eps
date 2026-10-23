@@ -50,7 +50,7 @@ export default function AgentsPage() {
       const lat = f.lat + (dist * Math.cos(az)) / 111132;
       const lon = f.lon + (dist * Math.sin(az)) / (111320 * Math.cos((f.lat * Math.PI) / 180));
       const r = await api.scenarioBuilding({ lat, lon, height_m: scHeight, width_m: 60, length_m: 24, angle_deg: -f.normal_az,
-        label: `Новый ЖК ${Math.round(scHeight / 3)} эт. перед «${card.name}»` });
+        label: `Новый ЖК ${Math.round(scHeight / 3)} эт. перед „${card.name}“` });
       setDrawer({ id: r.run.id, title: "Агенты пересчитывают виды после стройки" });
       ov.reload();
     } catch (e) { toast.show(String(e)); }

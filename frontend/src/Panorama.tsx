@@ -139,7 +139,8 @@ export default function Panorama({ hotelId, initialFacade }: { hotelId: string; 
           return (
             <g key={t}>
               <line x1={xx} x2={xx} y1={H} y2={H + 5} stroke="#9aa6b8" />
-              <text x={xx} y={H + 18} fontSize={11} textAnchor="middle" fill={isCompass ? "#13213b" : "#8a96a8"} fontWeight={isCompass ? 700 : 400}>
+              <text x={t === -70 ? xx + 3 : t === 70 ? xx - 3 : xx} y={H + 18} fontSize={11}
+                textAnchor={t === -70 ? "start" : t === 70 ? "end" : "middle"} fill={isCompass ? "#13213b" : "#8a96a8"} fontWeight={isCompass ? 700 : 400}>
                 {isCompass ? COMPASS[ci] : `${Math.round(az)}°`}
               </text>
             </g>
@@ -156,7 +157,7 @@ export default function Panorama({ hotelId, initialFacade }: { hotelId: string; 
         <span><i style={{ background: "#0b1830", opacity: 0.3 }} />вне обзора окна (±{data.window_half}°)</span>
       </div>
       <p className="small mt-s">
-        <b>{data.facade}-сторона, {data.floor} этаж</b> (глаза на высоте {Math.round(data.eye_z)} м над уровнем моря):{" "}
+        <b>{data.facade}-сторона, {data.floor}-й этаж</b> (глаза на высоте {Math.round(data.eye_z)} м над уровнем моря):{" "}
         {view.seaWidth > 0 ? <>море видно в секторе ≈{view.seaWidth}° из 120° обзора окна. </> : <>моря из этого окна не видно. </>}
         {seenMonths.length > 0
           ? <>Закат виден: {seenMonths.map((s) => `${MONTHS[s.month - 1]}${s.overSea ? " (над морем)" : ""}`).join(", ")}.</>

@@ -9,7 +9,7 @@ from shapely.geometry import LineString, Point
 
 from ..geo.opening_hours import parse as parse_oh
 from ..knowledge.categories import FOOD, plural_gen, title
-from .base import ToolResult, cap, tool
+from .base import ToolResult, cap, plural, quote, tool
 
 AGENT = "Исследователь OSM"
 
@@ -86,11 +86,12 @@ def nightlife(ctx, params) -> ToolResult:
              "examples": [{"name": p.name, "cat": title(p.cat), "dist_m": round(d)} for p, d in (bars + clubs)[:5] if p.name]}
     level_ru = {"lively": "оживлённый, в гуще событий", "moderate": "умеренно оживлённый", "calm": "спокойный"}[level]
     parts = [f"Район {level_ru}"]
-    parts.append(f"в 300 м: {len(bars)} баров и пабов, {len(food)} кафе и ресторанов")
+    parts.append(f"в 300 м баров и пабов: {len(bars)}, кафе и ресторанов: {len(food)}" if bars or food
+                 else "в 300 м нет ни баров, ни кафе")
     if clubs:
         parts.append(f"ночных клубов в 500 м: {len(clubs)}")
     if ped_d and ped_d[0] < 250:
-        parts.append(f"пешеходная улица{(' «' + ped_d[1] + '»') if ped_d[1] else ''} в {_fmt_m(ped_d[0])}")
+        parts.append(f"пешеходная улица{' ' + quote(ped_d[1]) if ped_d[1] else ''} в {_fmt_m(ped_d[0])}")
     return ToolResult(value, "; ".join(parts), 0.7, "osm", _detail(ctx, "amenity=bar/pub/nightclub/cafe/restaurant, highway=pedestrian"),
                       evidence={"score_formula": "бары + 2·клубы + 0.25·кафе + 1.5 (пешеходная улица < 250 м)"})
 
@@ -102,7 +103,7 @@ def construction(ctx, params) -> ToolResult:
     value = {"sites_300m": len(near), "nearest_m": round(near[0][1]) if near else None,
              "items": [{"name": a.get("name"), "dist_m": round(d), "area_m2": a.get("area_m2")} for a, d in near[:5]]}
     if near:
-        s = f"Стройка в {_fmt_m(near[0][1])}" + (f" («{near[0][0]['name']}»)" if near[0][0].get("name") else "")
+        s = f"Стройка в {_fmt_m(near[0][1])}" + (f" ({quote(near[0][0]['name'])})" if near[0][0].get("name") else "")
         if len(near) > 1:
             s += f", всего строек в 300 м: {len(near)}"
         s += " — днём возможен шум"
@@ -150,7 +151,8 @@ def night_services(ctx, params) -> ToolResult:
         "food_night": food_night, "hours_known_share": round(share, 2), "items": items,
     }
     parts = []
-    parts.append(f"ночная аптека «{ph[0].name or 'аптека'}» — {_fmt_m(ph[1])} пешком ({ph[2].summary()})" if ph
+    ph_name = ph[0].name if ph and ph[0].name and ph[0].name.strip().lower() != "аптека" else None
+    parts.append(f"ночная аптека{' ' + quote(ph_name) if ph_name else ''} — {_fmt_m(ph[1])} пешком ({ph[2].summary()})" if ph
                  else "круглосуточной аптеки в 1,5 км по данным OSM нет")
     parts.append(f"круглосуточный магазин в {_fmt_m(sh[1])}" if sh else "круглосуточного магазина рядом не найдено")
     if food_night:
@@ -180,7 +182,7 @@ def families(ctx, params) -> ToolResult:
     }
     parts = [f"детских площадок в 400 м: {count}" + (f" (ближайшая в {_fmt_m(nearest_pg)})" if nearest_pg is not None else "")]
     if park:
-        pname = (' «' + value['park_name'] + '»') if value['park_name'] else ''
+        pname = f" {quote(value['park_name'])}" if value["park_name"] else ""
         parts.append(f"парк{pname} прямо у отеля" if value["park_m"] < 60 else f"парк{pname} — {value['park_minutes']:.0f} мин пешком")
     if kh:
         parts.append(f"детская больница в {value['kids_hospital_km']} км".replace(".", ","))
@@ -248,7 +250,7 @@ def green_walk(ctx, params) -> ToolResult:
              "dog_park_m": round(dog_d) if dog_d is not None else None}
     parts = []
     if park:
-        pname = (' «' + value['park_name'] + '»') if value['park_name'] else ''
+        pname = f" {quote(value['park_name'])}" if value["park_name"] else ""
         parts.append(f"парк или сквер{pname} прямо у отеля" if value["park_m"] < 60 else f"парк{pname} в {_fmt_m(park[0].length_m)} пешком")
     parts.append(f"зелёных зон в 500 м: {value['green_ha_500m']} га".replace(".", ","))
     parts.append(f"площадка для собак в {_fmt_m(dog_d)}" if dog_d is not None else "специальных площадок для собак рядом нет")
@@ -310,14 +312,14 @@ def building_levels(ctx, params) -> ToolResult:
     lv_tag = tags.get("building:levels")
     if lv_tag and re.match(r"^\d+", lv_tag):
         lv = int(re.match(r"^\d+", lv_tag).group(0))
-        return ToolResult({"levels": lv, "height_m": round(lv * 3.2 + 1, 1)}, f"{lv} этажей (тег отеля building:levels)",
+        return ToolResult({"levels": lv, "height_m": round(lv * 3.2 + 1, 1)}, f"{lv} {plural(lv, 'этаж', 'этажа', 'этажей')} (тег отеля building:levels)",
                           0.85, "osm", _detail(ctx, "building:levels у объекта отеля"))
     if idx is None:
         return ToolResult(None, "Контур здания отеля в OSM не найден", 0.0, "osm", _detail(ctx, "здания"), status="no_data")
     bld = ctx.region.buildings[idx]
     if bld.levels_src in {"osm_levels", "osm_height", "osm_parts"} and bld.levels:
         src_ru = {"osm_levels": "building:levels", "osm_height": "height", "osm_parts": "building:part"}[bld.levels_src]
-        return ToolResult({"levels": bld.levels, "height_m": bld.height}, f"{bld.levels} этажей (тег {src_ru} здания в OSM)",
+        return ToolResult({"levels": bld.levels, "height_m": bld.height}, f"{bld.levels} {plural(bld.levels, 'этаж', 'этажа', 'этажей')} (тег {src_ru} здания в OSM)",
                           0.85, "osm", _detail(ctx, f"{src_ru} здания {bld.osm}"), evidence={"building": bld.osm})
     return ToolResult(None, "У здания в OSM нет этажности", 0.0, "osm", _detail(ctx, "building:levels"), status="no_data",
                       evidence={"building": bld.osm})
@@ -339,7 +341,7 @@ def levels_neighbors(ctx, params) -> ToolResult:
     within1 = stats.get("within1_neighbors") or 0.7
     conf = round(0.5 * within1, 2)
     return ToolResult({"levels": b.levels, "height_m": b.height},
-                      f"≈{b.levels} этажей — оценка по соседним зданиям (тега этажности у здания нет)", conf, "osm_estimate",
+                      f"≈{b.levels} {plural(b.levels, 'этаж', 'этажа', 'этажей')} — оценка по соседним зданиям (тега этажности у здания нет)", conf, "osm_estimate",
                       detail, evidence={"validation": stats, "note": f"на размеченных зданиях оценка попадает в ±1 этаж в {round(within1 * 100)}% случаев"})
 
 
@@ -351,6 +353,21 @@ TAG_RULES = {
     "elevator": lambda v: {"available": v == "yes"},
     "wheelchair": lambda v: {"wheelchair": v if v in {"yes", "limited", "no"} else None},
 }
+
+TAG_TEXT = {
+    "pets": lambda v: "с животными можно" if v in {"yes", "leashed", "designated"} else "с животными нельзя" if v == "no" else None,
+    "dog": lambda v: "с собаками можно" if v in {"yes", "leashed", "designated"} else "с собаками нельзя" if v == "no" else None,
+    "pets_allowed": lambda v: "с животными можно" if v == "yes" else "с животными нельзя" if v == "no" else None,
+    "internet_access": lambda v: "есть Wi‑Fi" if v in {"wlan", "yes", "wifi"} else "интернета нет" if v == "no" else None,
+    "elevator": lambda v: "есть лифт" if v == "yes" else "лифта нет" if v == "no" else None,
+    "wheelchair": lambda v: {"yes": "доступно для гостей на коляске", "limited": "частично доступно для гостей на коляске",
+                             "no": "не приспособлено для коляски"}.get(v),
+}
+
+
+def _tag_text(k: str, v: str) -> str:
+    t = TAG_TEXT[k](v) if k in TAG_TEXT else None
+    return f"{t} ({k}={v})" if t else f"{k}={v}"
 
 
 @tool("osm.hotel_tag", "Теги объекта отеля в OSM", AGENT, ["OSM теги отеля"],
@@ -371,7 +388,7 @@ def hotel_tag(ctx, params) -> ToolResult:
     if not found:
         return ToolResult(None, f"В OSM у отеля нет тегов {', '.join(params.get('tags', []))}", 0.0, "osm",
                           _detail(ctx, "теги отеля"), status="no_data")
-    s = "В OSM: " + ", ".join(f"{k}={v}" for k, v in found.items())
+    s = "В OSM у отеля отмечено: " + ", ".join(_tag_text(k, v) for k, v in found.items())
     return ToolResult(value, s, 0.55, "osm", _detail(ctx, "теги отеля " + ", ".join(found)), evidence={"tags": found})
 
 
@@ -442,7 +459,7 @@ def poi_walk(ctx, params) -> ToolResult:
     p, r = best
     value = {"available": r.minutes_to <= max_min, "minutes_to": round(r.minutes_to, 1), "minutes_back": round(r.minutes_back, 1),
              "walk_m": round(r.length_m), "climb_back_m": round(r.climb_back_m), "name": p.name}
-    s = f"{cap(title(p.cat))}{(' «' + p.name + '»') if p.name else ''}: {value['walk_m']} м, ≈{value['minutes_to']:.0f} мин пешком"
+    s = f"{cap(title(p.cat))}{' ' + quote(p.name) if p.name else ''}: {value['walk_m']} м, ≈{value['minutes_to']:.0f} мин пешком"
     return ToolResult(value, s, 0.75, "osm", _detail(ctx, label))
 
 

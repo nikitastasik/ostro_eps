@@ -1,5 +1,5 @@
 import { api } from "../api";
-import { ErrorBox, pct, SOURCE_RU, Spinner, useAsync } from "../ui";
+import { ErrorBox, pct, plural, SOURCE_RU, Spinner, useAsync } from "../ui";
 
 function EvalBlock({ title, data, kind }: { title: string; data: any; kind: "answers" | "queries" }) {
   if (!data) return null;
@@ -80,7 +80,7 @@ export default function MetricsPage() {
               )}
               <h3 className="mt">Геохарактеристики против ручной разметки</h3>
               {d.eval.geo_gold?.labels ? (
-                <div className="small">{d.eval.geo_gold.labels} отелей, {d.eval.geo_gold.fields} полей · точность <b>{pct(d.eval.geo_gold.accuracy, 1)}</b></div>
+                <div className="small">{d.eval.geo_gold.labels} {plural(d.eval.geo_gold.labels, "отель", "отеля", "отелей")}, {d.eval.geo_gold.fields} {plural(d.eval.geo_gold.fields, "поле", "поля", "полей")} · точность <b>{pct(d.eval.geo_gold.accuracy, 1)}</b></div>
               ) : (
                 <div className="small muted">Разметки пока нет: файл <span className="mono">data/eval/geo_gold.yaml</span> заполняется по фото номеров и панорамам.</div>
               )}

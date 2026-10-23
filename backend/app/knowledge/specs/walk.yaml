@@ -37,6 +37,8 @@
     numeric:
       - {unit: min, field: minutes_to, op: le}
       - {unit: m, field: walk_m, op: le}
+    # «море в 5 минутах», «пляж в 300 м»: слово-якорь + расстояние в той же фразе
+    numeric_anchors: [мор, пляж]
     variants:
       - phrases: [первая линия, первой линии, на берегу, у самого моря, на набережной]
         label: Первая линия

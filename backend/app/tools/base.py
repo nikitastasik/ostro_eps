@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import re
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
@@ -63,6 +64,24 @@ class Tool:
 def cap(text: str) -> str:
     """Первая буква заглавная, остальные как есть (str.capitalize портит имена собственные)."""
     return text[:1].upper() + text[1:] if text else text
+
+
+def plural(n: float, one: str, few: str, many: str) -> str:
+    """Форма слова для числа: 1 этаж, 3 этажа, 5 этажей."""
+    n = abs(int(n))
+    if n % 10 == 1 and n % 100 != 11:
+        return one
+    if 2 <= n % 10 <= 4 and not 12 <= n % 100 <= 14:
+        return few
+    return many
+
+
+def quote(name: str) -> str:
+    """«Название» из OSM: с заглавной буквы, вложенные кавычки — „лапки“."""
+    s = cap(" ".join(str(name).split()))
+    s = re.sub(r'"([^"]*)"', "„\\1“", s)
+    s = re.sub(r"«([^»]*)»", "„\\1“", s)
+    return f"«{s}»"
 
 
 TOOLS: dict[str, Tool] = {}
