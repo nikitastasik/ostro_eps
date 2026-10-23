@@ -275,7 +275,8 @@ def transport(ctx, params) -> ToolResult:
     if "bus_stop_m" in value:
         parts.append(f"остановка в {value['bus_stop_m']} м" + (f" ({quote(value['bus_stop_name'])})" if value.get("bus_stop_name") else ""))
     if "station" in value:
-        parts.append(f"ж/д станция {quote(value['station'])} — {value['station_minutes']:.0f} мин пешком")
+        walk = "меньше минуты" if value["station_minutes"] < 1 else f"{value['station_minutes']:.0f} мин"
+        parts.append(f"ж/д станция {quote(value['station'])} — {walk} пешком")
         if value.get("airport_train"):
             parts.append("с неё ходят прямые поезда до аэропорта")
     if "airport_drive_min" in value:
