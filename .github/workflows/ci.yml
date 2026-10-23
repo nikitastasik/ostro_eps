@@ -33,6 +33,8 @@ jobs:
           node-version: "22"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      - name: Скриншоты README сжаты (каждый до 300 КБ)
+        run: test -z "$(find docs/img -type f -size +300k)"
       - run: npm ci
         working-directory: frontend
       - name: Проверка типов и сборка
