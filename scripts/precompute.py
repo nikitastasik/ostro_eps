@@ -39,12 +39,13 @@ from app.agents.concierge import search  # noqa: E402
 from app.db import SessionLocal, init_db  # noqa: E402
 from app.knowledge.registry import sync_builtin  # noqa: E402
 from app.models import Hotel, Question  # noqa: E402
-from app.seed import dump_seed, load_hotels  # noqa: E402
+from app.seed import dump_seed, load_hotels, log_dedup  # noqa: E402
 
 init_db()
 with SessionLocal() as s:
     sync_builtin(s)
     print("hotels:", load_hotels(s))
+    log_dedup(s)
     s.commit()
     hotels = list(s.scalars(select(Hotel).order_by(Hotel.id)))
     if args.limit:

@@ -327,6 +327,8 @@ def search(session: Session, text: str, criteria_override: list[dict] | None = N
                     room["category"] = c["name"]
                     break
             parts = [f"номер с окнами на {facade_acc(best_facade)} сторону"]
+            if (h.building or {}).get("corpus"):
+                parts.insert(0, h.building["corpus"])
             if floor:
                 parts.append(f"не ниже {floor}-го этажа")
             if room.get("category"):
@@ -339,6 +341,19 @@ def search(session: Session, text: str, criteria_override: list[dict] | None = N
             "known": sum(1 for n in needs if n["status"] != "unknown"),
         })
     results.sort(key=lambda r: (r["excluded"], -r["score"], -r["known"]))
+    # корпуса одного комплекса — одна карточка: лучший корпус, остальные ссылкой «ещё N корпус»
+    collapsed, by_cx = [], {}
+    for r in results:
+        cx = r["hotel"].get("complex_id")
+        if cx and cx in by_cx:
+            by_cx[cx]["others"].append({"id": r["hotel"]["id"], "name": r["hotel"]["name"],
+                                        "corpus": r["hotel"].get("corpus"), "score": r["score"]})
+            continue
+        if cx:
+            r["others"] = []
+            by_cx[cx] = r
+        collapsed.append(r)
+    results = collapsed
     top = results[:limit]
     if log:
         session.add(SearchLog(query=text, parsed=pq.as_dict(), parser=pq.parser,
@@ -366,7 +381,8 @@ def _summary(needs: list[dict], room: dict | None) -> str:
 
 def hotel_brief(h: Hotel) -> dict:
     b = h.building or {}
-    return {"id": h.id, "name": h.name, "kind": h.kind, "stars": h.stars, "lat": h.lat, "lon": h.lon,
+    return {"id": h.id, "name": h.label, "osm_name": h.name, "kind": h.kind, "stars": h.stars, "lat": h.lat, "lon": h.lon,
+            "complex_id": b.get("complex_id"), "corpus": b.get("corpus"),
             "address": h.address, "levels": b.get("levels"), "website": h.website}
 
 

@@ -6,7 +6,7 @@ import RunLog, { RunDrawer } from "../RunLog";
 import { ErrorBox, fmtDate, Icon, SOURCE_RU, Spinner, useAsync, useToast } from "../ui";
 
 const KIND_RU: Record<string, string> = {
-  collect: "сбор по отелю", collect_all: "сбор по всем отелям", answer: "разбор ответа", actualize: "актуализация", scenario: "изменение среды",
+  collect: "сбор по отелю", collect_all: "сбор по всем отелям", answer: "разбор ответа", actualize: "актуализация", scenario: "изменение среды", dedup: "склейка дублей",
 };
 
 function useInterval(fn: () => void, ms: number) {

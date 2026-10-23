@@ -89,7 +89,7 @@ def question_dict(q: Question, session: Session | None = None) -> dict:
          "context": q.context}
     if session is not None:
         h = session.get(Hotel, q.hotel_id)
-        d["hotel_name"] = h.name if h else q.hotel_id
+        d["hotel_name"] = h.label if h else q.hotel_id
         specs = all_specs(session, enabled_only=False)
         d["titles"] = [specs[k]["title"] for k in q.char_keys or [] if k in specs]
     return d
@@ -99,7 +99,7 @@ def conflict_dict(c: Conflict, session: Session) -> dict:
     facts = [session.get(Fact, i) for i in c.fact_ids or []]
     h = session.get(Hotel, c.hotel_id)
     specs = all_specs(session, enabled_only=False)
-    return {"id": c.id, "hotel_id": c.hotel_id, "hotel_name": h.name if h else "", "char_key": c.char_key,
+    return {"id": c.id, "hotel_id": c.hotel_id, "hotel_name": h.label if h else "", "char_key": c.char_key,
             "title": specs.get(c.char_key, {}).get("title", c.char_key), "field": c.field, "description": c.description,
             "status": c.status, "resolution": c.resolution, "resolved_by": c.resolved_by,
             "question_id": c.question_id, "created_at": iso(c.created_at), "resolved_at": iso(c.resolved_at),
@@ -112,7 +112,7 @@ def run_dict(r: AgentRun, steps: list[AgentStep] | None = None, session: Session
          "created_at": iso(r.created_at), "started_at": iso(r.started_at), "finished_at": iso(r.finished_at)}
     if session is not None and r.hotel_id:
         h = session.get(Hotel, r.hotel_id)
-        d["hotel_name"] = h.name if h else None
+        d["hotel_name"] = h.label if h else None
     if steps is not None:
         d["steps"] = [{"idx": s.idx, "ts": iso(s.ts), "agent": s.agent, "kind": s.kind, "char_key": s.char_key,
                        "message": s.message, "payload": s.payload, "duration_ms": s.duration_ms} for s in steps]
@@ -129,9 +129,15 @@ def hotel_card(session: Session, h: Hotel) -> dict:
             groups.append({"key": g["key"], "title": g["title"], "items": items})
     b = h.building or {}
     known = sum(1 for k in specs if k in rvs and rvs[k].status in {"ok", "conflict", "stale"})
+    siblings = []
+    if b.get("complex_id"):
+        siblings = [{"id": o.id, "label": o.label, "corpus": (o.building or {}).get("corpus")}
+                    for o in session.scalars(select(Hotel).where(Hotel.id != h.id)) if (o.building or {}).get("complex_id") == b["complex_id"]]
     return {
-        "id": h.id, "name": h.name, "kind": h.kind, "stars": h.stars, "lat": h.lat, "lon": h.lon, "address": h.address,
-        "website": h.website, "phone": h.phone, "osm": (h.osm_tags or {}).get("_osm"),
+        "id": h.id, "name": h.label, "osm_name": h.name, "kind": h.kind, "stars": h.stars, "lat": h.lat, "lon": h.lon,
+        "address": h.address, "website": h.website, "phone": h.phone, "osm": (h.osm_tags or {}).get("_osm"),
+        "merged_from": (h.osm_tags or {}).get("_merged_from") or [],
+        "complex": {"id": b["complex_id"], "corpus": b.get("corpus"), "siblings": siblings} if b.get("complex_id") else None,
         "building": {k: b.get(k) for k in ("levels", "levels_src", "height", "osm")},
         "groups": groups, "coverage": round(known / max(1, len(specs)), 2), "known": known, "total": len(specs),
     }

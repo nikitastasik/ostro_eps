@@ -161,6 +161,17 @@ export default function HotelPage() {
             {h.website && <> · <a href={h.website} target="_blank" rel="noreferrer">сайт</a></>}
             {h.osm && <> · <a href={`https://www.openstreetmap.org/${h.osm.startsWith("n") ? "node" : h.osm.startsWith("w") ? "way" : "relation"}/${h.osm.slice(1)}`} target="_blank" rel="noreferrer">OSM</a></>}
           </div>
+          {h.complex && h.complex.siblings.length > 0 && (
+            <div className="small mt-s">
+              {h.complex.corpus} комплекса «{h.osm_name}» · другие корпуса:{" "}
+              {h.complex.siblings.map((s, i) => <span key={s.id}>{i > 0 && ", "}<Link to={`/hotel/${encodeURIComponent(s.id)}`}>{s.corpus || s.label}</Link></span>)}
+            </div>
+          )}
+          {(h.merged_from || []).length > 0 && (
+            <div className="tiny muted mt-s">
+              Агент-дедупликатор склеил с этой записью {h.merged_from!.map((m) => `${m.kind} OSM ${m.osm} (${m.dist_m} м)`).join(", ")} — это тот же отель, нанесённый в OSM дважды
+            </div>
+          )}
           <div className="row mt-s">
             <span className="chip accent">Знаем {h.known} из {h.total} характеристик</span>
             {openQs > 0 && <span className="chip violet">{openQs} {plural(openQs, "вопрос ждёт", "вопроса ждут", "вопросов ждут")} отельера</span>}

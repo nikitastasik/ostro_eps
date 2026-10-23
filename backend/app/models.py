@@ -38,6 +38,12 @@ class Hotel(Base):
     building: Mapped[dict] = mapped_column(JSONType, default=dict)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=utcnow)
 
+    @property
+    def label(self) -> str:
+        """Отображаемое имя: корпус комплекса или подпись тёзки («Grand Way · Северная ул.»)."""
+        extra = (self.building or {}).get("corpus") or self.district
+        return f"{self.name} · {extra}" if extra else self.name
+
 
 class Characteristic(Base):
     __tablename__ = "characteristics"

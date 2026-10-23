@@ -31,6 +31,8 @@ from shapely.geometry import LineString, MultiPolygon, Polygon, box, mapping
 from shapely.ops import linemerge, polygonize, unary_union
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
+from app.agents.dedup import describe as dedup_describe  # noqa: E402
+from app.agents.dedup import resolve as dedup_resolve  # noqa: E402
 from app.geo.proj import LocalProjection  # noqa: E402
 from app.geo.raster import Grid, rasterize_polygon  # noqa: E402
 
@@ -774,6 +776,11 @@ def main() -> None:
         })
     print(f"hotels in bbox with name: {len(hotels_out)}; with building: {sum(1 for h in hotels_out if h['building'] is not None)}",
           flush=True)
+    # агент-дедупликатор (тот же код, что в приложении): дубли «точка + контур», корпуса, подписи тёзок
+    streets = [(w["name"], LineString(w["xy"])) for w in ways_out if w.get("name") and len(w["xy"]) >= 2]
+    hotels_out, dedup_log = dedup_resolve(hotels_out, lambda i: bpolys[i], lambda i: buildings_out[i].get("lv"), streets)
+    for e in dedup_log:
+        print("dedup:", dedup_describe(e), flush=True)
 
     peaks_out = []
     for p in col.peaks:

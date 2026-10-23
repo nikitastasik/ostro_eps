@@ -90,7 +90,7 @@ def collect_hotel(session: Session, hotel: Hotel, keys: list[str] | None, logger
     if keys and "building_levels" not in keys and any(k in VIEW_KEYS for k in order):
         pass  # этажность берём из текущего знания
     ctx = HotelContext(session, hotel, get_region(), logger)
-    logger.step("Оркестратор", "plan", f"{quote(hotel.name)}: собираю {len(order)} {plural(len(order), 'характеристику', 'характеристики', 'характеристик')} в порядке зависимостей",
+    logger.step("Оркестратор", "plan", f"{quote(hotel.label)}: собираю {len(order)} {plural(len(order), 'характеристику', 'характеристики', 'характеристик')} в порядке зависимостей",
                 payload={"order": order})
     stats = {"ok": 0, "conflict": 0, "asked": 0, "unknown": 0, "stale": 0}
     for key in order:
@@ -158,7 +158,7 @@ def _run_actualize(session: Session, run: AgentRun, logger: RunLogger) -> str:
     n = 0
     for hotel_id, keys in list(by_hotel.items())[:limit]:
         hotel = session.get(Hotel, hotel_id)
-        logger.step("Оркестратор", "plan", f"Перепроверяю {quote(hotel.name)}: {', '.join(keys)}", payload={"keys": keys})
+        logger.step("Оркестратор", "plan", f"Перепроверяю {quote(hotel.label)}: {', '.join(keys)}", payload={"keys": keys})
         quiet = RunLogger(session, run, store=False)
         collect_hotel(session, hotel, keys, quiet, reason="stale", allow_questions=True)
         n += 1
@@ -212,7 +212,7 @@ def _run_scenario(session: Session, run: AgentRun, logger: RunLogger) -> str:
         if diffs:
             changed += 1
             titles = [(get_spec(session, k) or {}).get("title", k) for k in diffs]
-            logger.step("Арбитр", "result", f"{quote(h.name)} ({d:.0f} м): изменилось — {', '.join(t[:1].lower() + t[1:] for t in titles)}",
+            logger.step("Арбитр", "result", f"{quote(h.label)} ({d:.0f} м): изменилось — {', '.join(t[:1].lower() + t[1:] for t in titles)}",
                         payload={"hotel_id": h.id, "keys": diffs})
         session.commit()
     return f"затронуто отелей: {len(hotels)}, изменилось знание у {changed}"

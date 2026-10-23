@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api, Criterion, Meta, SearchResponse, SearchResult } from "../api";
 import MapView from "../MapView";
-import { Confidence, ErrorBox, Icon, KIND_RU, ScoreRing, scoreColor, Sources, Spinner, useCompare } from "../ui";
+import { Confidence, ErrorBox, Icon, KIND_RU, plural, ScoreRing, scoreColor, Sources, Spinner, useCompare } from "../ui";
 
 const OP_RU: Record<string, string> = { le: "≤", ge: "≥", lt: "<", gt: ">", eq: "=", ne: "≠", in: "∈", contains: "∋", nonempty: "" };
 const MONTHS_PREP = ["январе", "феврале", "марте", "апреле", "мае", "июне", "июле", "августе", "сентябре", "октябре", "ноябре", "декабре"];
@@ -52,6 +52,12 @@ function ResultCard({ r, rank, hl, onHover }: { r: SearchResult; rank: number; h
           <div>
             <h3 style={{ marginBottom: 2 }}><Link to={`/hotel/${encodeURIComponent(h.id)}`}>{h.name}</Link></h3>
             <div className="small muted">{KIND_RU[h.kind] || h.kind}{h.stars ? ` · ${"★".repeat(h.stars)}` : ""}{h.address ? ` · ${h.address}` : ""}{h.levels ? ` · ${h.levels} эт.` : ""}</div>
+            {(r.others || []).length > 0 && (
+              <div className="tiny mt-s">
+                ещё {r.others!.length} {plural(r.others!.length, "корпус", "корпуса", "корпусов")} комплекса:{" "}
+                {r.others!.map((o, i) => <span key={o.id}>{i > 0 && ", "}<Link to={`/hotel/${encodeURIComponent(o.id)}`}>{o.corpus || o.name}</Link> <span className="muted">({o.score})</span></span>)}
+              </div>
+            )}
           </div>
           <div className="row">
             <button className={`btn small ${cmp.has(h.id) ? "primary" : ""}`} onClick={() => cmp.toggle(h.id, h.name)}>

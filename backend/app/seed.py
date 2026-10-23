@@ -1,7 +1,7 @@
 """Начальная загрузка: отели региона и заранее собранное агентами знание (data/seed).
 
 Если файла data/seed/seed.json.gz нет, агенты соберут всё сами в фоне при первом старте
-(для 167 отелей это ~10 минут); с файлом демо готово сразу.
+(для 164 отелей это ~10 минут); с файлом демо готово сразу.
 """
 
 from __future__ import annotations
@@ -14,6 +14,7 @@ import logging
 from sqlalchemy import func, inspect, select, text
 from sqlalchemy.orm import Session
 
+from .agents import dedup
 from .config import settings
 from .db import engine
 from .geo.views import building_facades
@@ -38,10 +39,17 @@ DATE_FIELDS = {"observed_at", "valid_until", "created_at", "updated_at", "answer
                "finished_at", "ts"}
 
 
+def resolved_hotels() -> tuple[list[dict], list[dict]]:
+    """Отели региона после агента-дедупликатора (идемпотентно: data/<регион>/hotels.json уже очищен)."""
+    rd = get_region()
+    return dedup.resolve(rd.hotels, lambda i: rd.buildings[i].poly, lambda i: rd.buildings[i].levels, rd.streets)
+
+
 def load_hotels(session: Session) -> int:
     rd = get_region()
+    hotels, _ = resolved_hotels()
     n = 0
-    for h in rd.hotels:
+    for h in hotels:
         if session.get(Hotel, h["id"]) is not None:
             continue
         b_idx = h.get("building")
@@ -51,11 +59,15 @@ def load_hotels(session: Session) -> int:
             building.update({"osm": b.osm, "levels": b.levels, "levels_src": b.levels_src, "height": b.height,
                              "height_src": b.height_src,
                              "facades": [f.as_dict() for f in building_facades(b.poly)]})
+        if h.get("complex"):
+            building.update({"complex_id": h["complex"]["id"], "corpus": h["complex"]["label"]})
         tags = dict(h.get("tags") or {})
         tags["_osm"] = h["osm"]
+        if h.get("merged_from"):
+            tags["_merged_from"] = h["merged_from"]
         session.add(Hotel(id=h["id"], name=h["name"], kind=h["kind"], stars=h.get("stars"), lat=h["lat"], lon=h["lon"],
                           address=h.get("address"), website=h.get("website"), phone=h.get("phone"), osm_tags=tags,
-                          building=building))
+                          building=building, district=h.get("hint")))
         n += 1
     session.flush()
     return n
@@ -120,6 +132,31 @@ def load_seed(session: Session, path, shift_to_now: bool = True) -> dict:
     return counts
 
 
+def log_dedup(session: Session) -> AgentRun | None:
+    """Запись работы агента-дедупликатора в журнал (один раз: в сиде она уже есть)."""
+    if session.scalar(select(func.count(AgentRun.id)).where(AgentRun.kind == "dedup")):
+        return None
+    _, entries = resolved_hotels()
+    merges = [e for e in entries if e["type"] == "merge"]
+    cx = [e for e in entries if e["type"] == "complex"]
+    names = [e for e in entries if e["type"] == "namesakes"]
+    now = utcnow()
+    run = AgentRun(kind="dedup", trigger="bootstrap", status="done", created_at=now, started_at=now, finished_at=now,
+                   params={"merge_m": dedup.MERGE_M, "complex_m": dedup.COMPLEX_M},
+                   summary=f"склеено дублей: {len(merges)}, комплексов с корпусами: {len(cx)}, групп тёзок с подписями: {len(names)}")
+    session.add(run)
+    session.flush()
+    steps = [("plan", "Ищу один и тот же отель, нанесённый в OSM дважды, корпуса комплексов и тёзок: одинаковое "
+                      f"имя и до {dedup.MERGE_M:.0f} м или точка в контуре здания — дубль; до {dedup.COMPLEX_M:.0f} м "
+                      "при совпадающих тегах — корпуса", {})]
+    steps += [("decision", dedup.describe(e), e) for e in entries]
+    steps.append(("result", run.summary[:1].upper() + run.summary[1:], {}))
+    for i, (kind, msg, payload) in enumerate(steps):
+        session.add(AgentStep(run_id=run.id, idx=i, ts=now, agent="Дедупликатор", kind=kind, message=msg, payload=payload))
+    session.flush()
+    return run
+
+
 def bootstrap(session: Session) -> str:
     sync_builtin(session)
     n_hotels = session.scalar(select(func.count(Hotel.id))) or 0
@@ -133,7 +170,9 @@ def bootstrap(session: Session) -> str:
     if settings.seed_on_start and seed_path.exists():
         counts = load_seed(session, seed_path)
         log.info("Загружено знание агентов из %s: %s", seed_path, counts)
+        log_dedup(session)
         return "seed"
+    log_dedup(session)
     from .agents.orchestrator import create_run
 
     create_run(session, "collect_all", trigger="bootstrap", params={"note": "первичный сбор без готового seed"})

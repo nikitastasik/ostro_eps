@@ -117,6 +117,9 @@ export interface HotelCard {
   website: string | null;
   phone: string | null;
   osm: string | null;
+  osm_name?: string;
+  merged_from?: { id: string; osm: string; kind: string; dist_m: number; moved: string[] }[];
+  complex?: { id: string; corpus: string | null; siblings: { id: string; label: string; corpus: string | null }[] } | null;
   building: { levels: number | null; levels_src: string | null; height: number | null; osm: string | null };
   groups: Group[];
   coverage: number;
@@ -170,7 +173,8 @@ export interface Need {
 }
 
 export interface SearchResult {
-  hotel: { id: string; name: string; kind: string; stars: number | null; lat: number; lon: number; address: string | null; levels: number | null };
+  hotel: { id: string; name: string; kind: string; stars: number | null; lat: number; lon: number; address: string | null; levels: number | null; corpus?: string | null };
+  others?: { id: string; name: string; corpus: string | null; score: number }[];
   score: number;
   excluded: boolean;
   needs: Need[];

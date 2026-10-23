@@ -111,7 +111,7 @@ def hotels(q: str = "", limit: int = 400, session: Session = Depends(get_session
     rows = list(session.scalars(stmt))
     if q:
         ql = q.lower()
-        rows = [h for h in rows if ql in h.name.lower() or ql in (h.address or "").lower()]
+        rows = [h for h in rows if ql in h.label.lower() or ql in (h.address or "").lower()]
     rv_count = dict(session.execute(select(ResolvedValue.hotel_id, func.count()).where(
         ResolvedValue.status.in_(["ok", "conflict", "stale"])).group_by(ResolvedValue.hotel_id)).all())
     total = len(all_specs(session))
@@ -124,7 +124,7 @@ def hotels(q: str = "", limit: int = 400, session: Session = Depends(get_session
         r = hl.get(h.id, {})
         sv, ss, qn, ba = r.get("sea_view"), r.get("sunset_view"), r.get("quietness"), r.get("beach_access")
         out.append({
-            "id": h.id, "name": h.name, "kind": h.kind, "stars": h.stars, "lat": h.lat, "lon": h.lon, "address": h.address,
+            "id": h.id, "name": h.label, "kind": h.kind, "stars": h.stars, "lat": h.lat, "lon": h.lon, "address": h.address,
             "levels": (h.building or {}).get("levels"), "coverage": round(rv_count.get(h.id, 0) / max(1, total), 2),
             "badges": {
                 "sea_view": bool(sv and sv.value and sv.value.get("available")),
@@ -452,7 +452,7 @@ def changes(limit: int = 50, session: Session = Depends(get_session)):
     out = []
     for c in session.scalars(select(Change).order_by(desc(Change.id)).limit(limit)):
         h = session.get(Hotel, c.hotel_id)
-        out.append({"id": c.id, "hotel_id": c.hotel_id, "hotel_name": h.name if h else "", "char_key": c.char_key,
+        out.append({"id": c.id, "hotel_id": c.hotel_id, "hotel_name": h.label if h else "", "char_key": c.char_key,
                     "title": specs.get(c.char_key, {}).get("title", c.char_key), "old": c.old_summary,
                     "new": c.new_summary, "reason": c.reason, "at": iso(c.created_at), "run_id": c.run_id})
     return {"items": out}
@@ -485,6 +485,9 @@ def agents_overview(session: Session = Depends(get_session)):
                                    "role": "понимает запрос гостя, подбирает сторону здания и этаж, объясняет выбор"})
     agents.setdefault("Компилятор", {"name": "Компилятор", "tools": [],
                                      "role": "превращает текстовое описание новой характеристики в спецификацию"})
+    agents.setdefault("Дедупликатор", {"name": "Дедупликатор", "tools": [],
+                                       "role": "склеивает отель, нанесённый в OSM дважды, связывает корпуса комплексов, "
+                                               "подписывает тёзок по улице"})
     overrides = [{"id": o.id, "label": o.label, "height_m": o.height_m, "active": o.active, "geometry": o.geometry,
                   "created_at": iso(o.created_at)} for o in session.scalars(select(GeoOverride).order_by(desc(GeoOverride.id)))]
     return {"runs": runs_by_status, "questions": q_by_status, "conflicts": c_by_status, "stale": stale,
@@ -589,10 +592,10 @@ def login(body: LoginBody):
 def hotelier_hotels(q: str = "", user: str = Depends(check_token), session: Session = Depends(get_session)):
     rows = list(session.scalars(select(Hotel).order_by(Hotel.name)))
     if q:
-        rows = [h for h in rows if q.lower() in h.name.lower()]
+        rows = [h for h in rows if q.lower() in h.label.lower()]
     open_q = dict(session.execute(select(Question.hotel_id, func.count()).where(Question.status == "open")
                                   .group_by(Question.hotel_id)).all())
-    return {"items": [{"id": h.id, "name": h.name, "kind": h.kind, "address": h.address,
+    return {"items": [{"id": h.id, "name": h.label, "kind": h.kind, "address": h.address,
                        "open_questions": open_q.get(h.id, 0)} for h in rows]}
 
 

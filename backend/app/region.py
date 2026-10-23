@@ -17,7 +17,7 @@ from pathlib import Path
 
 import numpy as np
 import shapely
-from shapely.geometry import Polygon
+from shapely.geometry import LineString, Polygon
 
 from .config import settings
 from .geo.proj import LocalProjection
@@ -137,6 +137,24 @@ class RegionData:
     @cached_property
     def roads(self) -> dict:
         return _load_json(self.folder / "roads.json.gz")
+
+    @cached_property
+    def streets(self) -> list[tuple[str, LineString]]:
+        """Именованные улицы OSM: (название, линия) — для подписей тёзок и зданий-заслонов."""
+        out = []
+        for w in self.roads["ways"]:
+            pts = json.loads(w["xy"]) if isinstance(w["xy"], str) else w["xy"]
+            if w.get("name") and len(pts) >= 2:
+                out.append((w["name"], LineString(pts)))
+        return out
+
+    @cached_property
+    def street_tree(self) -> shapely.STRtree:
+        return shapely.STRtree([ln for _, ln in self.streets])
+
+    def nearest_street(self, x: float, y: float, max_d: float = 150.0) -> str | None:
+        idx = self.street_tree.query_nearest(shapely.Point(x, y), max_distance=max_d)
+        return self.streets[int(idx[0])][0] if len(idx) else None
 
     @cached_property
     def rails(self) -> list[dict]:
