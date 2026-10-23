@@ -55,8 +55,13 @@ class Tool:
 
     def describe(self) -> dict[str, Any]:
         return {
-            "name": self.name, "title": self.title, "agent": self.agent, "sources": self.sources,
-            "description": self.description, "params": self.params_schema, "generic": self.generic,
+            "name": self.name,
+            "title": self.title,
+            "agent": self.agent,
+            "sources": self.sources,
+            "description": self.description,
+            "params": self.params_schema,
+            "generic": self.generic,
             "cost": self.cost,
         }
 
@@ -92,9 +97,9 @@ def named(kind: str, name: str | None, adj: str | None = None) -> str:
     if not name or low == k:
         return head
     if low.startswith(k + " "):
-        rest = name[len(kind) + 1:].strip()
-        if rest[:1].isupper() or rest[:1].isdigit() or rest[:1] in "\"«":
-            rest = rest.strip("\"«»")
+        rest = name[len(kind) + 1 :].strip()
+        if rest[:1].isupper() or rest[:1].isdigit() or rest[:1] in '"«':
+            rest = rest.strip('"«»')
             return f"{head} {quote(rest)}"
         return f"{head} {rest}"
     if k in low:
@@ -111,12 +116,30 @@ INSTITUTION_RE = re.compile(r"санатори|пансионат|отел|го�
 TOOLS: dict[str, Tool] = {}
 
 
-def tool(name: str, title: str, agent: str, sources: list[str], description: str,
-         applicable: Callable[..., tuple[bool, str]] | None = None, params_schema: dict | None = None,
-         generic: bool = False, cost: str = "low"):
+def tool(
+    name: str,
+    title: str,
+    agent: str,
+    sources: list[str],
+    description: str,
+    applicable: Callable[..., tuple[bool, str]] | None = None,
+    params_schema: dict | None = None,
+    generic: bool = False,
+    cost: str = "low",
+):
     def deco(fn):
-        TOOLS[name] = Tool(name=name, title=title, agent=agent, sources=sources, description=description, fn=fn,
-                           applicable=applicable, params_schema=params_schema or {}, generic=generic, cost=cost)
+        TOOLS[name] = Tool(
+            name=name,
+            title=title,
+            agent=agent,
+            sources=sources,
+            description=description,
+            fn=fn,
+            applicable=applicable,
+            params_schema=params_schema or {},
+            generic=generic,
+            cost=cost,
+        )
         return fn
 
     return deco

@@ -18,15 +18,104 @@ from ..knowledge.registry import normalize
 from ..nlp.ru import find_phrase, norm, number_before, phrase_tokens, tokens
 from ..tools.base import load_all
 
-GENERIC_TOOLS = ["osm.poi_nearby", "osm.poi_walk", "osm.area_nearby", "geo.target_view", "climate.month_metric",
-                 "osm.hotel_tag", "hotelier.ask"]
-STOP = {"есть", "ли", "в", "на", "и", "или", "с", "у", "для", "по", "от", "до", "рядом", "отеле", "отель", "номере",
-        "номер", "номерах", "гостинице", "гостиница", "можно", "чтобы", "где", "как", "какой", "какая", "сколько",
-        "минут", "минутах", "пешком", "метрах", "метров", "км", "пределах", "радиусе", "ближайший", "ближайшая",
-        "ближайшее", "должен", "должна", "должно", "быть", "чтоб", "хочу", "нужен", "нужна", "нужно"}
-TRANSLIT = dict(zip("абвгдеёжзийклмнопрстуфхцчшщъыьэюя",
-                    ["a", "b", "v", "g", "d", "e", "e", "zh", "z", "i", "y", "k", "l", "m", "n", "o", "p", "r", "s", "t",
-                     "u", "f", "h", "c", "ch", "sh", "sch", "", "y", "", "e", "yu", "ya"]))
+GENERIC_TOOLS = [
+    "osm.poi_nearby",
+    "osm.poi_walk",
+    "osm.area_nearby",
+    "geo.target_view",
+    "climate.month_metric",
+    "osm.hotel_tag",
+    "hotelier.ask",
+]
+STOP = {
+    "есть",
+    "ли",
+    "в",
+    "на",
+    "и",
+    "или",
+    "с",
+    "у",
+    "для",
+    "по",
+    "от",
+    "до",
+    "рядом",
+    "отеле",
+    "отель",
+    "номере",
+    "номер",
+    "номерах",
+    "гостинице",
+    "гостиница",
+    "можно",
+    "чтобы",
+    "где",
+    "как",
+    "какой",
+    "какая",
+    "сколько",
+    "минут",
+    "минутах",
+    "пешком",
+    "метрах",
+    "метров",
+    "км",
+    "пределах",
+    "радиусе",
+    "ближайший",
+    "ближайшая",
+    "ближайшее",
+    "должен",
+    "должна",
+    "должно",
+    "быть",
+    "чтоб",
+    "хочу",
+    "нужен",
+    "нужна",
+    "нужно",
+}
+TRANSLIT = dict(
+    zip(
+        "абвгдеёжзийклмнопрстуфхцчшщъыьэюя",
+        [
+            "a",
+            "b",
+            "v",
+            "g",
+            "d",
+            "e",
+            "e",
+            "zh",
+            "z",
+            "i",
+            "y",
+            "k",
+            "l",
+            "m",
+            "n",
+            "o",
+            "p",
+            "r",
+            "s",
+            "t",
+            "u",
+            "f",
+            "h",
+            "c",
+            "ch",
+            "sh",
+            "sch",
+            "",
+            "y",
+            "",
+            "e",
+            "yu",
+            "ya",
+        ],
+    )
+)
 
 
 def slug(text: str) -> str:
@@ -71,7 +160,13 @@ def _phrases(text: str) -> list[str]:
 def compile_rules(text: str) -> dict:
     t = norm(text)
     poi, area = _detect_categories(text)
-    flt = "24_7" if re.search(r"круглосуточн|24/7|24 часа", t) else "night" if re.search(r"ночью|ночн|после полуночи|поздно", t) else None
+    flt = (
+        "24_7"
+        if re.search(r"круглосуточн|24/7|24 часа", t)
+        else "night"
+        if re.search(r"ночью|ночн|после полуночи|поздно", t)
+        else None
+    )
     minutes = number_before(t, r"мин\w*")
     meters = number_before(t, r"м\b|метр\w*")
     km = number_before(t, r"км\b|километр\w*")
@@ -87,42 +182,67 @@ def compile_rules(text: str) -> dict:
         cat_names = ", ".join(title(c) for c in cats)
         if poi and (minutes or "пешк" in t):
             recipe = [{"tool": "osm.poi_walk", "params": {"categories": poi, "max_minutes": minutes or 10, "filter": flt}}]
-            fields = {"available": {"type": "bool", "title": f"{cat_names.capitalize()} в пешей доступности"},
-                      "minutes_to": {"type": "number", "title": "Минут пешком"},
-                      "walk_m": {"type": "number", "title": "Метров пешком"}}
+            fields = {
+                "available": {"type": "bool", "title": f"{cat_names.capitalize()} в пешей доступности"},
+                "minutes_to": {"type": "number", "title": "Минут пешком"},
+                "walk_m": {"type": "number", "title": "Метров пешком"},
+            }
             descr = f"Пеший путь до ближайшего объекта ({cat_names}) не дольше {minutes or 10:g} мин"
         elif poi:
             recipe = [{"tool": "osm.poi_nearby", "params": {"categories": poi, "radius_m": radius, "filter": flt}}]
-            fields = {"available": {"type": "bool", "title": f"{cat_names.capitalize()} рядом"},
-                      "count": {"type": "int", "title": "Сколько в радиусе"},
-                      "nearest_m": {"type": "number", "title": "До ближайшего, м"}}
+            fields = {
+                "available": {"type": "bool", "title": f"{cat_names.capitalize()} рядом"},
+                "count": {"type": "int", "title": "Сколько в радиусе"},
+                "nearest_m": {"type": "number", "title": "До ближайшего, м"},
+            }
             descr = f"Объекты «{cat_names}» в радиусе {radius:g} м по данным OSM"
         else:
             recipe = [{"tool": "osm.area_nearby", "params": {"categories": area, "radius_m": radius}}]
-            fields = {"available": {"type": "bool", "title": f"{cat_names.capitalize()} рядом"},
-                      "count": {"type": "int", "title": "Сколько в радиусе"},
-                      "nearest_m": {"type": "number", "title": "До ближайшего, м"}}
+            fields = {
+                "available": {"type": "bool", "title": f"{cat_names.capitalize()} рядом"},
+                "count": {"type": "int", "title": "Сколько в радиусе"},
+                "nearest_m": {"type": "number", "title": "До ближайшего, м"},
+            }
             descr = f"Площадные объекты «{cat_names}» в радиусе {radius:g} м по данным OSM"
         if flt:
             descr += ", " + ("только круглосуточные" if flt == "24_7" else "открытые ночью")
-        spec = {"title": base_title, "description": descr, "scope": "hotel", "group": "custom", "icon": "pin",
-                "value_fields": fields, "recipe": recipe, "ttl_days": 90, "confidence_threshold": 0.35,
-                "conflict": {"fields": [], "authority": ["osm"], "policy": "computed_wins"},
-                "search": {"phrases": _phrases(text), "criteria": [{"field": "available", "op": "eq", "value": True}]}}
+        spec = {
+            "title": base_title,
+            "description": descr,
+            "scope": "hotel",
+            "group": "custom",
+            "icon": "pin",
+            "value_fields": fields,
+            "recipe": recipe,
+            "ttl_days": 90,
+            "confidence_threshold": 0.35,
+            "conflict": {"fields": [], "authority": ["osm"], "policy": "computed_wins"},
+            "search": {"phrases": _phrases(text), "criteria": [{"field": "available", "op": "eq", "value": True}]},
+        }
         return spec
     q = text.strip().rstrip("?")
     if re.match(r"(?i)^(есть ли|можно ли|какой|какая|какие|сколько|как|где|предоставляете|принимаете)", q):
         q = q[0].upper() + q[1:] + "?"
     else:
         q = f"Есть ли у вас: {q[0].lower() + q[1:]}?"
-    spec = {"title": base_title, "description": "Этой информации нет в открытых данных — агент спрашивает отельера.",
-            "scope": "hotel", "group": "custom", "icon": "chat",
-            "value_fields": {"available": {"type": "bool", "title": base_title}},
-            "recipe": [{"tool": "hotelier.ask", "when": "always_once"}], "ttl_days": 365, "confidence_threshold": 0.5,
-            "conflict": {"fields": [{"field": "available", "type": "bool"}], "authority": ["hotelier_confirmed", "hotelier"],
-                         "policy": "priority"},
-            "question": {"text": q, "fields": ["available"]},
-            "search": {"phrases": _phrases(text), "criteria": [{"field": "available", "op": "eq", "value": True}]}}
+    spec = {
+        "title": base_title,
+        "description": "Этой информации нет в открытых данных — агент спрашивает отельера.",
+        "scope": "hotel",
+        "group": "custom",
+        "icon": "chat",
+        "value_fields": {"available": {"type": "bool", "title": base_title}},
+        "recipe": [{"tool": "hotelier.ask", "when": "always_once"}],
+        "ttl_days": 365,
+        "confidence_threshold": 0.5,
+        "conflict": {
+            "fields": [{"field": "available", "type": "bool"}],
+            "authority": ["hotelier_confirmed", "hotelier"],
+            "policy": "priority",
+        },
+        "question": {"text": q, "fields": ["available"]},
+        "search": {"phrases": _phrases(text), "criteria": [{"field": "available", "op": "eq", "value": True}]},
+    }
     return spec
 
 
@@ -157,21 +277,23 @@ def compile_llm(text: str) -> dict | None:
         "Ты агент-компилятор характеристик отелей. По текстовому описанию составь спецификацию характеристики, "
         "которую агенты смогут вычислять для каждого отеля. Используй ТОЛЬКО инструменты из каталога и категории из "
         "справочника. Если ответ нельзя получить из открытых данных, используй hotelier.ask (вопрос отельеру) с "
-        "when=always_once и полем question. Верни JSON: {\"title\", \"description\", \"scope\": \"hotel\", "
-        "\"value_fields\": {имя: {\"type\": bool|int|number|text, \"title\"}}, \"recipe\": [{\"tool\", \"params\", \"when\"?}], "
-        "\"question\"?: {\"text\", \"fields\"}, \"search\": {\"phrases\": [...], \"criteria\": [{\"field\", \"op\", \"value\"}]}, "
-        "\"ttl_days\"}. Поля value_fields должны совпадать с тем, что возвращает инструмент: osm.poi_nearby и "
+        'when=always_once и полем question. Верни JSON: {"title", "description", "scope": "hotel", '
+        '"value_fields": {имя: {"type": bool|int|number|text, "title"}}, "recipe": [{"tool", "params", "when"?}], '
+        '"question"?: {"text", "fields"}, "search": {"phrases": [...], "criteria": [{"field", "op", "value"}]}, '
+        '"ttl_days"}. Поля value_fields должны совпадать с тем, что возвращает инструмент: osm.poi_nearby и '
         "osm.area_nearby — available, count, nearest_m; osm.poi_walk — available, minutes_to, walk_m; "
         "geo.target_view — available, min_floor; hotelier.ask — любые поля из question.fields."
     )
-    res = llm.chat_json(system, json.dumps({"text": text, "tools": catalog, "categories": cats}, ensure_ascii=False),
-                        max_tokens=900)
+    res = llm.chat_json(
+        system, json.dumps({"text": text, "tools": catalog, "categories": cats}, ensure_ascii=False), max_tokens=900
+    )
     if not res or not isinstance(res, dict):
         return None
     res.setdefault("group", "custom")
     res.setdefault("icon", "pin")
-    res.setdefault("conflict", {"fields": [], "authority": ["hotelier_confirmed", "hotelier", "osm", "geo"],
-                                "policy": "priority"})
+    res.setdefault(
+        "conflict", {"fields": [], "authority": ["hotelier_confirmed", "hotelier", "osm", "geo"], "policy": "priority"}
+    )
     if _validate(res):
         return None
     return res

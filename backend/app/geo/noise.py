@@ -24,9 +24,20 @@ from .sun import angle_diff
 
 # уровень у дороги на расстоянии 10 м, дБ(A), день
 ROAD_LEVEL = {
-    "motorway": 78, "trunk": 76, "primary": 73, "secondary": 70, "tertiary": 65,
-    "unclassified": 60, "residential": 56, "living_street": 50, "service": 50,
-    "motorway_link": 72, "trunk_link": 71, "primary_link": 68, "secondary_link": 66, "tertiary_link": 62,
+    "motorway": 78,
+    "trunk": 76,
+    "primary": 73,
+    "secondary": 70,
+    "tertiary": 65,
+    "unclassified": 60,
+    "residential": 56,
+    "living_street": 50,
+    "service": 50,
+    "motorway_link": 72,
+    "trunk_link": 71,
+    "primary_link": 68,
+    "secondary_link": 66,
+    "tertiary_link": 62,
 }
 NIGHT_DROP = {"motorway": 6, "trunk": 6, "primary": 7, "secondary": 8, "tertiary": 9}
 NIGHT_DROP_DEFAULT = 10
@@ -108,8 +119,9 @@ class NoiseEngine:
             for x, y, dl in _line_samples(coords, SAMPLE_STEP):
                 # уровень на 25 м -> эквивалентный уровень на 10 м для линейного источника
                 corr = 10 * math.log10(dl / (math.pi * D0)) + 10 * math.log10(25 / D0)
-                out.append(Source("rail", r.get("name") or "железная дорога", x, y, RAIL_DAY + corr,
-                                  RAIL_NIGHT + corr, "railway"))
+                out.append(
+                    Source("rail", r.get("name") or "железная дорога", x, y, RAIL_DAY + corr, RAIL_NIGHT + corr, "railway")
+                )
         for p in self.rd.pois:
             if p.cat not in NIGHTLIFE:
                 continue
@@ -181,17 +193,29 @@ class NoiseEngine:
             ln = 10 * math.log10(en) if en > 0 else -99
             if ln < night - 10:
                 continue
-            sources.append({"kind": kind, "name": name, "night_db": round(ln, 1),
-                            "day_db": round(10 * math.log10(ed), 1) if ed > 0 else None,
-                            "distance_m": round(dmin)})
+            sources.append(
+                {
+                    "kind": kind,
+                    "name": name,
+                    "night_db": round(ln, 1),
+                    "day_db": round(10 * math.log10(ed), 1) if ed > 0 else None,
+                    "distance_m": round(dmin),
+                }
+            )
         return {"day_db": round(day, 1), "night_db": round(night, 1), "label": night_label(night), "sources": sources}
 
 
 def _road_kind(cls: str) -> str:
     return {
-        "motorway": "магистраль", "trunk": "магистраль без названия", "primary": "главная улица без названия",
-        "secondary": "крупная улица без названия", "tertiary": "улица без названия", "residential": "жилая улица",
-        "service": "внутриквартальный проезд", "unclassified": "дорога без названия", "living_street": "жилая зона",
+        "motorway": "магистраль",
+        "trunk": "магистраль без названия",
+        "primary": "главная улица без названия",
+        "secondary": "крупная улица без названия",
+        "tertiary": "улица без названия",
+        "residential": "жилая улица",
+        "service": "внутриквартальный проезд",
+        "unclassified": "дорога без названия",
+        "living_street": "жилая зона",
     }.get(cls.replace("_link", ""), "дорога")
 
 

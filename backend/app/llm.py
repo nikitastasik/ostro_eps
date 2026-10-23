@@ -27,8 +27,12 @@ def enabled() -> bool:
 
 
 def status() -> dict:
-    return {"enabled": enabled(), "model": settings.llm_model if enabled() else None,
-            "base_url": settings.llm_base_url if enabled() else None, "last_error": _last_error["error"]}
+    return {
+        "enabled": enabled(),
+        "model": settings.llm_model if enabled() else None,
+        "base_url": settings.llm_base_url if enabled() else None,
+        "last_error": _last_error["error"],
+    }
 
 
 def _extract_json(text: str):

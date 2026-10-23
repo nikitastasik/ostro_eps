@@ -10,8 +10,15 @@ import pytest
 from app.nlp.textlint import anomalies
 
 SEED = Path(__file__).resolve().parents[2] / "data" / "seed" / "seed.json.gz"
-FIELDS = [("resolved_values", "summary"), ("facts", "summary"), ("questions", "text"), ("changes", "old_summary"),
-          ("changes", "new_summary"), ("conflicts", "description"), ("agent_steps", "message")]
+FIELDS = [
+    ("resolved_values", "summary"),
+    ("facts", "summary"),
+    ("questions", "text"),
+    ("changes", "old_summary"),
+    ("changes", "new_summary"),
+    ("conflicts", "description"),
+    ("agent_steps", "message"),
+]
 
 
 def test_linter_catches_known_problems():

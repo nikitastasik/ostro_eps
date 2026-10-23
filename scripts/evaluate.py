@@ -1,7 +1,7 @@
 """Метрики качества на размеченных выборках (data/eval).
 
-  python scripts/evaluate.py          # правила
-  python scripts/evaluate.py --llm    # то же через LLM (нужен LLM_API_KEY в окружении)
+python scripts/evaluate.py          # правила
+python scripts/evaluate.py --llm    # то же через LLM (нужен LLM_API_KEY в окружении)
 """
 
 from __future__ import annotations
@@ -42,7 +42,12 @@ def llm_queries(name: str) -> dict:
         fn += len(exp - got)
     p = tp / (tp + fp) if tp + fp else 0
     rc = tp / (tp + fn) if tp + fn else 0
-    return {"queries": len(rows), "precision": round(p, 3), "recall": round(rc, 3), "f1": round(2 * p * rc / (p + rc), 3) if p + rc else 0}
+    return {
+        "queries": len(rows),
+        "precision": round(p, 3),
+        "recall": round(rc, 3),
+        "f1": round(2 * p * rc / (p + rc), 3) if p + rc else 0,
+    }
 
 
 def llm_answers(name: str) -> dict:
@@ -77,6 +82,8 @@ out = {
     "sun_vs_pyephem": strip(eval_sun()),
 }
 if args.llm:
-    out["llm"] = {"answers_holdout": llm_answers("hotelier_answers_holdout.yaml"),
-                  "queries_holdout": llm_queries("queries_holdout.yaml")}
+    out["llm"] = {
+        "answers_holdout": llm_answers("hotelier_answers_holdout.yaml"),
+        "queries_holdout": llm_queries("queries_holdout.yaml"),
+    }
 print(json.dumps(out, ensure_ascii=False, indent=2))

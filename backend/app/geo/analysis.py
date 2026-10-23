@@ -29,8 +29,7 @@ from .views import (
     floors_for,
 )
 
-MONTHS_NOM = ["январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август", "сентябрь", "октябрь",
-              "ноябрь", "декабрь"]
+MONTHS_NOM = ["январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь"]
 MONTHS_SHORT = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"]
 
 SEA_GLIMPSE, SEA_PARTIAL, SEA_WIDE = 3, 15, 45
@@ -90,8 +89,7 @@ def ordinal_floor(n: int) -> str:
 
 
 RAY_KINDS = ["sea", "building", "trees", "land", "mountain"]
-RAY_KIND_BY_CLS = {CLS_SEA: "sea", CLS_BUILDING: "building", CLS_TREES: "trees", CLS_LAND: "land",
-                   CLS_MOUNTAIN: "mountain"}
+RAY_KIND_BY_CLS = {CLS_SEA: "sea", CLS_BUILDING: "building", CLS_TREES: "trees", CLS_LAND: "land", CLS_MOUNTAIN: "mountain"}
 
 
 class HotelGeo:
@@ -178,10 +176,10 @@ class HotelGeo:
                     e = blockers.setdefault(bid, {"id": bid, "deg": 0, "dist_m": dist})
                     e["deg"] += 1
                     e["dist_m"] = min(e["dist_m"], dist)
-            rays.append({"az": round(a, 1), "kind": kind, "d": round(min(dist, max_d)), "far": dist > max_d,
-                         "b": bid, "win": in_win})
-        return {"rays": rays, "counts": counts,
-                "blockers": sorted(blockers.values(), key=lambda e: (-e["deg"], e["dist_m"]))}
+            rays.append(
+                {"az": round(a, 1), "kind": kind, "d": round(min(dist, max_d)), "far": dist > max_d, "b": bid, "win": in_win}
+            )
+        return {"rays": rays, "counts": counts, "blockers": sorted(blockers.values(), key=lambda e: (-e["deg"], e["dist_m"]))}
 
     def data_quality(self) -> dict:
         """Насколько можно доверять геометрии вокруг: доля зданий с известной высотой в 300 м."""
@@ -195,8 +193,11 @@ class HotelGeo:
         ids = np.unique(sub[sub >= 0])
         if ids.size == 0:
             return {"known_height_share": 1.0, "buildings_300m": 0}
-        known = sum(1 for i in ids if i < len(self.rd.buildings) and self.rd.buildings[i].height_src in
-                    {"osm_height", "osm_levels", "osm_parts"})
+        known = sum(
+            1
+            for i in ids
+            if i < len(self.rd.buildings) and self.rd.buildings[i].height_src in {"osm_height", "osm_levels", "osm_parts"}
+        )
         return {"known_height_share": round(known / ids.size, 2), "buildings_300m": int(ids.size)}
 
     # ------------------------------------------------------------------
@@ -216,7 +217,9 @@ class HotelGeo:
             min_partial = next((fl for fl in sorted(widths) if widths[fl] >= SEA_PARTIAL), None)
             min_glimpse = next((fl for fl in sorted(widths) if widths[fl] >= SEA_GLIMPSE), None)
             maxw = max(widths.values()) if widths else 0
-            quality = "wide" if maxw >= SEA_WIDE else "partial" if maxw >= SEA_PARTIAL else "glimpse" if maxw >= SEA_GLIMPSE else "none"
+            quality = (
+                "wide" if maxw >= SEA_WIDE else "partial" if maxw >= SEA_PARTIAL else "glimpse" if maxw >= SEA_GLIMPSE else "none"
+            )
             # чем закрыто море с первого этажа (для объяснения)
             r1 = v["floors"][min(v["floors"])]
             toward_sea = win & ~r1["sea_vis"]
@@ -227,23 +230,34 @@ class HotelGeo:
                 if vals.size:
                     blocked_by = CLS_NAMES.get(int(vals[np.argmax(cnt)]))
             by_facade[key] = {
-                "available": min_partial is not None, "min_floor": min_partial, "glimpse_floor": min_glimpse,
-                "quality": quality, "max_width_deg": maxw, "width_by_floor": {str(k): w for k, w in widths.items()},
+                "available": min_partial is not None,
+                "min_floor": min_partial,
+                "glimpse_floor": min_glimpse,
+                "quality": quality,
+                "max_width_deg": maxw,
+                "width_by_floor": {str(k): w for k, w in widths.items()},
                 "nearest_sea_m": round(nearest) if nearest is not None and not math.isnan(nearest) else None,
-                "blocked_low_by": blocked_by, "normal_az": round(f.normal_az),
+                "blocked_low_by": blocked_by,
+                "normal_az": round(f.normal_az),
             }
         avail = {k: v for k, v in by_facade.items() if v["available"]}
         order = {"wide": 3, "partial": 2, "glimpse": 1, "none": 0}
         best = None
         if by_facade:
-            best = max(by_facade, key=lambda k: (order[by_facade[k]["quality"]], by_facade[k]["max_width_deg"],
-                                                 -(by_facade[k]["min_floor"] or 99)))
+            best = max(
+                by_facade,
+                key=lambda k: (order[by_facade[k]["quality"]], by_facade[k]["max_width_deg"], -(by_facade[k]["min_floor"] or 99)),
+            )
         min_floor = min((v["min_floor"] for v in avail.values()), default=None)
         quality = by_facade[best]["quality"] if best else "none"
         value = {
-            "available": bool(avail), "min_floor": min_floor, "quality": quality,
-            "max_width_deg": by_facade[best]["max_width_deg"] if best else 0, "best_facade": best if avail else None,
-            "by_facade": by_facade, "floors_checked": self.floors[-1],
+            "available": bool(avail),
+            "min_floor": min_floor,
+            "quality": quality,
+            "max_width_deg": by_facade[best]["max_width_deg"] if best else 0,
+            "best_facade": best if avail else None,
+            "by_facade": by_facade,
+            "floors_checked": self.floors[-1],
         }
         value["summary"] = self._sea_summary(value)
         return value
@@ -258,8 +272,10 @@ class HotelGeo:
             s += f" (обзор до {bf[main]['max_width_deg']}°)"
             others = [k for k in sides[1:]]
             if others:
-                s += "; также из окон " + ", ".join(f"{facade_gen(k)} стороны — с {bf[k]['min_floor']}-го этажа "
-                                                    f"(до {bf[k]['max_width_deg']}°)" for k in others[:2])
+                s += "; также из окон " + ", ".join(
+                    f"{facade_gen(k)} стороны — с {bf[k]['min_floor']}-го этажа " f"(до {bf[k]['max_width_deg']}°)"
+                    for k in others[:2]
+                )
             low = bf[main].get("blocked_low_by")
             if bf[main]["min_floor"] and bf[main]["min_floor"] > 1 and low:
                 s += f". Ниже обзор закрывают {low}"
@@ -299,18 +315,33 @@ class HotelGeo:
                     # горы/холмы (≤ 4°, дальше 1.5 км). Солнце, ушедшее за соседний дом, — не вид на закат.
                     far_terrain = cls in (CLS_MOUNTAIN, CLS_LAND) and sky_d >= 1500
                     if h <= SUN_FULL or (h <= SUN_PARTIAL and far_terrain):
-                        over = "sea" if cls == CLS_SEA else "mountains" if cls == CLS_MOUNTAIN else (
-                            "buildings" if cls == CLS_BUILDING else "trees" if cls == CLS_TREES else "land")
+                        over = (
+                            "sea"
+                            if cls == CLS_SEA
+                            else "mountains"
+                            if cls == CLS_MOUNTAIN
+                            else ("buildings" if cls == CLS_BUILDING else "trees" if cls == CLS_TREES else "land")
+                        )
                         hide = self._hide_minutes(s["path"], az_arr, r["horizon"])
-                        best = {"min_floor": fl, "over": over, "full": h <= SUN_FULL, "horizon_deg": round(h, 2),
-                                "hide_min_before": hide, "azimuth": s["azimuth"], "time": s["local_time"]}
+                        best = {
+                            "min_floor": fl,
+                            "over": over,
+                            "full": h <= SUN_FULL,
+                            "horizon_deg": round(h, 2),
+                            "hide_min_before": hide,
+                            "azimuth": s["azimuth"],
+                            "time": s["local_time"],
+                        }
                         break
                 if best:
                     fm[str(s["month"])] = best
-            by_facade[key] = {"months": fm, "available": bool(fm),
-                              "min_floor": min((m["min_floor"] for m in fm.values()), default=None),
-                              "month_list": sorted(int(m) for m in fm),
-                              "over_sea_months": sorted(int(m) for m, x in fm.items() if x["over"] == "sea")}
+            by_facade[key] = {
+                "months": fm,
+                "available": bool(fm),
+                "min_floor": min((m["min_floor"] for m in fm.values()), default=None),
+                "month_list": sorted(int(m) for m in fm),
+                "over_sea_months": sorted(int(m) for m, x in fm.items() if x["over"] == "sea"),
+            }
         for s in suns:
             cands = [(k, bf["months"][str(s["month"])]) for k, bf in by_facade.items() if str(s["month"]) in bf["months"]]
             if cands:
@@ -320,10 +351,14 @@ class HotelGeo:
         over_sea = sorted(int(m) for m, x in by_month.items() if x["over"] == "sea")
         best = max(by_facade, key=lambda k: (len(by_facade[k]["months"]), -(by_facade[k]["min_floor"] or 99)), default=None)
         value = {
-            "available": bool(months), "min_floor": min((x["min_floor"] for x in by_month.values()), default=None),
-            "months": months, "over_sea_months": over_sea,
-            "best_facade": best if months else None, "by_facade": {k: {kk: vv for kk, vv in bf.items() if kk != "months"} | {"detail": bf["months"]}
-                                                                  for k, bf in by_facade.items()},
+            "available": bool(months),
+            "min_floor": min((x["min_floor"] for x in by_month.values()), default=None),
+            "months": months,
+            "over_sea_months": over_sea,
+            "best_facade": best if months else None,
+            "by_facade": {
+                k: {kk: vv for kk, vv in bf.items() if kk != "months"} | {"detail": bf["months"]} for k, bf in by_facade.items()
+            },
             "by_month": by_month,
             "sunset_azimuths": {str(s["month"]): s["azimuth"] for s in suns},
             "sunset_times": {str(s["month"]): s["local_time"] for s in suns},
@@ -348,15 +383,22 @@ class HotelGeo:
     def _sunset_summary(self, v: dict) -> str:
         if not v["available"]:
             az = v["sunset_azimuths"]
-            return (f"Из окон заката не видно: солнце садится на {int(min(az.values()))}–{int(max(az.values()))}° "
-                    f"(запад-юго-запад зимой, северо-запад летом), а в эту сторону окна не выходят или вид закрыт")
+            return (
+                f"Из окон заката не видно: солнце садится на {int(min(az.values()))}–{int(max(az.values()))}° "
+                f"(запад-юго-запад зимой, северо-запад летом), а в эту сторону окна не выходят или вид закрыт"
+            )
         bm = v["by_month"]
         groups: dict[tuple, list[int]] = {}
         for m, x in bm.items():
             groups.setdefault((x["facade"], x["min_floor"], x["over"]), []).append(int(m))
         parts = []
-        over_ru = {"sea": "над морем", "mountains": "за горами", "land": "за холмами",
-                   "buildings": "над крышами города", "trees": "над кронами деревьев"}
+        over_ru = {
+            "sea": "над морем",
+            "mountains": "за горами",
+            "land": "за холмами",
+            "buildings": "над крышами города",
+            "trees": "над кронами деревьев",
+        }
         for (fac, fl, over), ms in sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0][1])):
             floor_txt = "с 1-го этажа" if fl == 1 else f"с {fl}-го этажа"
             parts.append(f"{month_ranges(ms)} — {over_ru.get(over, '')} из окон {facade_gen(fac)} стороны {floor_txt}")
@@ -373,8 +415,11 @@ class HotelGeo:
             win = np.abs(angle_diff(v["az"], f.normal_az)) <= WINDOW_HALF
             widths = {fl: min(int(np.sum(r["mtn_vis"] & win)), 2 * WINDOW_HALF) for fl, r in v["floors"].items()}
             min_floor = next((fl for fl in sorted(widths) if widths[fl] >= 5), None)
-            by_facade[key] = {"available": min_floor is not None, "min_floor": min_floor,
-                              "max_width_deg": max(widths.values()) if widths else 0}
+            by_facade[key] = {
+                "available": min_floor is not None,
+                "min_floor": min_floor,
+                "max_width_deg": max(widths.values()) if widths else 0,
+            }
             for p in self.rd.peaks:
                 dist = math.hypot(p["x"] - f.x, p["y"] - f.y)
                 if dist > 60000 or dist < 500:
@@ -384,13 +429,19 @@ class HotelGeo:
                     continue
                 for fl in self.floors:
                     z_eye = self.ground + 1.6 + 3.0 * (fl - 1)
-                    ok, margin, _ = self.view_engine.line_of_sight(f.x, f.y, z_eye, p["x"], p["y"], p["ele"], self.own_id,
-                                                                   target_radius=60)
+                    ok, margin, _ = self.view_engine.line_of_sight(
+                        f.x, f.y, z_eye, p["x"], p["y"], p["ele"], self.own_id, target_radius=60
+                    )
                     if ok:
                         prev = peaks_seen.get(p["name"])
                         if prev is None or fl < prev["min_floor"]:
-                            peaks_seen[p["name"]] = {"name": p["name"], "ele": round(p["ele"]), "dist_km": round(dist / 1000, 1),
-                                                     "min_floor": fl, "facade": key}
+                            peaks_seen[p["name"]] = {
+                                "name": p["name"],
+                                "ele": round(p["ele"]),
+                                "dist_km": round(dist / 1000, 1),
+                                "min_floor": fl,
+                                "facade": key,
+                            }
                         break
         peaks = sorted(peaks_seen.values(), key=lambda p: (-p["ele"]))[:6]
         for p in peaks:
@@ -401,8 +452,7 @@ class HotelGeo:
         avail = {k: v for k, v in by_facade.items() if v["available"]}
         min_floor = min((v["min_floor"] for v in avail.values()), default=None)
         best = min(avail, key=lambda k: (avail[k]["min_floor"], -avail[k]["max_width_deg"])) if avail else None
-        value = {"available": bool(avail), "min_floor": min_floor, "best_facade": best, "peaks": peaks,
-                 "by_facade": by_facade}
+        value = {"available": bool(avail), "min_floor": min_floor, "best_facade": best, "peaks": peaks, "by_facade": by_facade}
         if avail:
             s = f"Горы видны из окон {facade_gen(best)} стороны с {min_floor}-го этажа"
             if peaks:
@@ -432,8 +482,9 @@ class HotelGeo:
                     continue
                 for fl in self.floors:
                     z_eye = self.ground + 1.6 + 3.0 * (fl - 1)
-                    ok, margin, _ = self.view_engine.line_of_sight(f.x, f.y, z_eye, lx, ly, target_z, self.own_id,
-                                                                   target_radius=lm.get("radius", 25))
+                    ok, margin, _ = self.view_engine.line_of_sight(
+                        f.x, f.y, z_eye, lx, ly, target_z, self.own_id, target_radius=lm.get("radius", 25)
+                    )
                     if ok:
                         if best is None or fl < best["min_floor"]:
                             best = {"name": lm["name"], "min_floor": fl, "facade": f.key, "dist_km": round(dist / 1000, 1)}
@@ -445,11 +496,16 @@ class HotelGeo:
             if best:
                 seen.append(best)
         seen.sort(key=lambda x: x["min_floor"])
-        value = {"available": bool(seen), "landmarks": seen,
-                 "min_floor": min((x["min_floor"] for x in seen), default=None), "by_facade": by_facade}
+        value = {
+            "available": bool(seen),
+            "landmarks": seen,
+            "min_floor": min((x["min_floor"] for x in seen), default=None),
+            "by_facade": by_facade,
+        }
         if seen:
             value["summary"] = "Видны ориентиры: " + "; ".join(
-                f"{x['name']} — из окон {facade_gen(x['facade'])} стороны с {x['min_floor']}-го этажа" for x in seen[:4])
+                f"{x['name']} — из окон {facade_gen(x['facade'])} стороны с {x['min_floor']}-го этажа" for x in seen[:4]
+            )
         else:
             value["summary"] = "Ни один из городских ориентиров не попадает в прямую видимость из окон"
         return value
@@ -475,30 +531,45 @@ class HotelGeo:
             first = per_floor[min(per_floor)]
             open_from = next((fl for fl in sorted(per_floor) if per_floor[fl] >= 50), None)
             what = {CLS_BUILDING: "building", CLS_TREES: "trees", CLS_LAND: "slope", CLS_MOUNTAIN: "slope"}.get(first_cls)
-            by_facade[key] = {"first_obstacle_m": None if first >= 1e4 else round(first), "first_obstacle": what if first < 1e4 else None,
-                              "wall_m_floor1": round(first) if (first < 1e4 and what == "building") else None,
-                              "open_from_floor": open_from, "open_view": open_from is not None,
-                              "available": open_from is not None, "min_floor": open_from}
+            by_facade[key] = {
+                "first_obstacle_m": None if first >= 1e4 else round(first),
+                "first_obstacle": what if first < 1e4 else None,
+                "wall_m_floor1": round(first) if (first < 1e4 and what == "building") else None,
+                "open_from_floor": open_from,
+                "open_view": open_from is not None,
+                "available": open_from is not None,
+                "min_floor": open_from,
+            }
         open_any = any(v["open_view"] for v in by_facade.values())
         walls = [v["wall_m_floor1"] for v in by_facade.values() if v["wall_m_floor1"] is not None]
         value = {"open_view": open_any, "min_wall_m": min(walls) if walls else None, "by_facade": by_facade}
         parts = []
-        tight = sorted((k for k, v in by_facade.items() if v["wall_m_floor1"] is not None and v["wall_m_floor1"] < 25),
-                       key=lambda k: by_facade[k]["wall_m_floor1"])
+        tight = sorted(
+            (k for k, v in by_facade.items() if v["wall_m_floor1"] is not None and v["wall_m_floor1"] < 25),
+            key=lambda k: by_facade[k]["wall_m_floor1"],
+        )
         if tight:
             first, *rest = tight[:2]
-            parts.append(f"на нижних этажах окна {facade_gen(first)} стороны смотрят на соседний дом в "
-                         f"{by_facade[first]['wall_m_floor1']} м"
-                         + "".join(f", {facade_gen(k)} — в {by_facade[k]['wall_m_floor1']} м" for k in rest))
+            parts.append(
+                f"на нижних этажах окна {facade_gen(first)} стороны смотрят на соседний дом в "
+                f"{by_facade[first]['wall_m_floor1']} м"
+                + "".join(f", {facade_gen(k)} — в {by_facade[k]['wall_m_floor1']} м" for k in rest)
+            )
         green = [k for k, v in by_facade.items() if v["first_obstacle"] == "trees" and (v["first_obstacle_m"] or 99) < 30]
         if green:
-            parts.append("окна " + " и ".join(facade_gen(k) for k in green[:2])
-                         + (" сторон" if len(green) > 1 else " стороны") + " выходят в зелень деревьев")
+            parts.append(
+                "окна "
+                + " и ".join(facade_gen(k) for k in green[:2])
+                + (" сторон" if len(green) > 1 else " стороны")
+                + " выходят в зелень деревьев"
+            )
         opened = [k for k, v in by_facade.items() if v["open_view"]]
         if opened:
             k = min(opened, key=lambda k: by_facade[k]["open_from_floor"])
-            parts.append(f"открытый вид дальше 50 м — из окон {facade_gen(k)} стороны с {by_facade[k]['open_from_floor']}-го этажа")
-        value["summary"] = ("; ".join(parts) or "Перед окнами нет близких преград")
+            parts.append(
+                f"открытый вид дальше 50 м — из окон {facade_gen(k)} стороны с {by_facade[k]['open_from_floor']}-го этажа"
+            )
+        value["summary"] = "; ".join(parts) or "Перед окнами нет близких преград"
         value["summary"] = value["summary"][0].upper() + value["summary"][1:]
         return value
 
@@ -514,16 +585,23 @@ class HotelGeo:
         quiet = min(by_facade, key=lambda k: by_facade[k]["night_db"])
         loud = max(by_facade, key=lambda k: by_facade[k]["night_db"])
         value = {
-            "night_db": by_facade[quiet]["night_db"], "day_db": by_facade[quiet]["day_db"],
-            "night_db_worst": by_facade[loud]["night_db"], "day_db_worst": by_facade[loud]["day_db"],
-            "quiet_side": quiet, "loud_side": loud, "label": by_facade[quiet]["label"],
-            "label_worst": by_facade[loud]["label"], "by_facade": by_facade,
+            "night_db": by_facade[quiet]["night_db"],
+            "day_db": by_facade[quiet]["day_db"],
+            "night_db_worst": by_facade[loud]["night_db"],
+            "day_db_worst": by_facade[loud]["day_db"],
+            "quiet_side": quiet,
+            "loud_side": loud,
+            "label": by_facade[quiet]["label"],
+            "label_worst": by_facade[loud]["label"],
+            "by_facade": by_facade,
         }
         s = f"Ночью тише всего у {facade_gen(quiet)} стороны: ≈{by_facade[quiet]['night_db']:.0f} дБ ({by_facade[quiet]['label']})"
         if loud != quiet and by_facade[loud]["night_db"] - by_facade[quiet]["night_db"] >= 3:
             src = by_facade[loud]["sources"][0]["name"] if by_facade[loud]["sources"] else "дорога"
-            s += (f"; {facade_nom(loud)} сторона — ≈{by_facade[loud]['night_db']:.0f} дБ ({by_facade[loud]['label']}), "
-                  f"главный источник: {src}")
+            s += (
+                f"; {facade_nom(loud)} сторона — ≈{by_facade[loud]['night_db']:.0f} дБ ({by_facade[loud]['label']}), "
+                f"главный источник: {src}"
+            )
         value["summary"] = s
         return value
 
@@ -592,8 +670,8 @@ class HotelGeo:
             dist.append(dist[-1] + math.hypot(x2 - x1, y2 - y1))
         step = max(1, len(route.coords) // 120)
         return {
-            "line": [[round(float(a), 6), round(float(b), 6)] for a, b in zip(lon[::step], lat[::step])] +
-                    [[round(float(lon[-1]), 6), round(float(lat[-1]), 6)]],
-            "profile": [[round(d), round(z, 1)] for d, z in list(zip(dist, route.elevations))[::step]] +
-                       [[round(dist[-1]), round(route.elevations[-1], 1)]],
+            "line": [[round(float(a), 6), round(float(b), 6)] for a, b in zip(lon[::step], lat[::step])]
+            + [[round(float(lon[-1]), 6), round(float(lat[-1]), 6)]],
+            "profile": [[round(d), round(z, 1)] for d, z in list(zip(dist, route.elevations))[::step]]
+            + [[round(dist[-1]), round(route.elevations[-1], 1)]],
         }

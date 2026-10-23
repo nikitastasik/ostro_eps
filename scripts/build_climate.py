@@ -24,8 +24,7 @@ import os
 
 import numpy as np
 
-MONTHS_RU = ["январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август",
-             "сентябрь", "октябрь", "ноябрь", "декабрь"]
+MONTHS_RU = ["январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь"]
 
 
 def ghcn_normals(path: str, year_from: int, year_to: int) -> dict:
@@ -113,11 +112,21 @@ def main() -> None:
         a, s = air["normals"][m], sea["normals"][m]
         months.append({"month": m, "name": MONTHS_RU[m - 1], **a, **s})
     doc = {
-        "station": {"id": "RSM00037099", "name": "SOTCHI", "lat": 43.58, "lon": 39.77,
-                    "source": "NOAA GHCN-Daily", "years": air["years"],
-                    "url": "https://noaa-ghcn-pds.s3.amazonaws.com/csv/by_station/RSM00037099.csv"},
-        "sea": {"source": "NOAA OISST v2.1 (AVHRR), ячейка 0.25°", "cell": sea["cell"], "years": sea["years"],
-                "url": "https://noaa-cdr-sea-surface-temp-optimum-interpolation-pds.s3.amazonaws.com/"},
+        "station": {
+            "id": "RSM00037099",
+            "name": "SOTCHI",
+            "lat": 43.58,
+            "lon": 39.77,
+            "source": "NOAA GHCN-Daily",
+            "years": air["years"],
+            "url": "https://noaa-ghcn-pds.s3.amazonaws.com/csv/by_station/RSM00037099.csv",
+        },
+        "sea": {
+            "source": "NOAA OISST v2.1 (AVHRR), ячейка 0.25°",
+            "cell": sea["cell"],
+            "years": sea["years"],
+            "url": "https://noaa-cdr-sea-surface-temp-optimum-interpolation-pds.s3.amazonaws.com/",
+        },
         "built_at": dt.date.today().isoformat(),
         "months": months,
     }

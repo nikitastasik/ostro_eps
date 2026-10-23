@@ -16,19 +16,54 @@ import shapely
 from shapely.geometry import LineString
 
 WALK_CLASSES = {
-    "footway", "path", "pedestrian", "steps", "living_street", "residential", "service", "unclassified",
-    "tertiary", "tertiary_link", "secondary", "secondary_link", "primary", "primary_link", "trunk",
-    "trunk_link", "track", "cycleway", "corridor", "bridleway", "road", "platform",
+    "footway",
+    "path",
+    "pedestrian",
+    "steps",
+    "living_street",
+    "residential",
+    "service",
+    "unclassified",
+    "tertiary",
+    "tertiary_link",
+    "secondary",
+    "secondary_link",
+    "primary",
+    "primary_link",
+    "trunk",
+    "trunk_link",
+    "track",
+    "cycleway",
+    "corridor",
+    "bridleway",
+    "road",
+    "platform",
 }
 MAJOR_ROADS = {"trunk", "trunk_link", "primary", "primary_link", "secondary", "secondary_link"}
 DRIVE_SPEED = {  # км/ч, городские условия без пробок
-    "motorway": 80, "motorway_link": 50, "trunk": 60, "trunk_link": 40, "primary": 45, "primary_link": 35,
-    "secondary": 38, "secondary_link": 30, "tertiary": 32, "tertiary_link": 28, "unclassified": 30,
-    "residential": 22, "living_street": 10, "service": 12, "road": 20,
+    "motorway": 80,
+    "motorway_link": 50,
+    "trunk": 60,
+    "trunk_link": 40,
+    "primary": 45,
+    "primary_link": 35,
+    "secondary": 38,
+    "secondary_link": 30,
+    "tertiary": 32,
+    "tertiary_link": 28,
+    "unclassified": 30,
+    "residential": 22,
+    "living_street": 10,
+    "service": 12,
+    "road": 20,
 }
 ROAD_NAMES_RU = {
-    "trunk": "магистраль", "trunk_link": "съезд магистрали", "primary": "главная улица",
-    "primary_link": "съезд", "secondary": "крупная улица", "secondary_link": "съезд",
+    "trunk": "магистраль",
+    "trunk_link": "съезд магистрали",
+    "primary": "главная улица",
+    "primary_link": "съезд",
+    "secondary": "крупная улица",
+    "secondary_link": "съезд",
 }
 
 
@@ -100,9 +135,16 @@ class WalkGraph:
             for a, b in zip(idx[:-1], idx[1:]):
                 (x1, y1), (x2, y2) = g.xy[a], g.xy[b]
                 e = {
-                    "u": a, "v": b, "len": math.hypot(x2 - x1, y2 - y1), "way": wi, "cls": c,
-                    "steps": c == "steps", "bridge": bool(w.get("bridge")), "tunnel": bool(w.get("tunnel")),
-                    "crossing": w.get("footway") == "crossing", "name": w.get("name"),
+                    "u": a,
+                    "v": b,
+                    "len": math.hypot(x2 - x1, y2 - y1),
+                    "way": wi,
+                    "cls": c,
+                    "steps": c == "steps",
+                    "bridge": bool(w.get("bridge")),
+                    "tunnel": bool(w.get("tunnel")),
+                    "crossing": w.get("footway") == "crossing",
+                    "name": w.get("name"),
                 }
                 eid = len(g.edges)
                 g.edges.append(e)
@@ -243,10 +285,20 @@ class WalkGraph:
         crossings = self._crossings(nodes, edges)
         rail = self._rail(nodes, edges)
         coords = [self.xy[n] for n in nodes]
-        return Route(nodes=nodes, length_m=length, minutes_to=t_to / 60, minutes_back=t_back / 60,
-                     climb_to_m=climb_to, climb_back_m=climb_back, max_slope_pct=max_slope * 100,
-                     steps_segments=len(steps_ways), crossings=crossings, rail=rail, coords=coords,
-                     elevations=[float(self.z[n]) for n in nodes])
+        return Route(
+            nodes=nodes,
+            length_m=length,
+            minutes_to=t_to / 60,
+            minutes_back=t_back / 60,
+            climb_to_m=climb_to,
+            climb_back_m=climb_back,
+            max_slope_pct=max_slope * 100,
+            steps_segments=len(steps_ways),
+            crossings=crossings,
+            rail=rail,
+            coords=coords,
+            elevations=[float(self.z[n]) for n in nodes],
+        )
 
     def _crossings(self, nodes: list[int], edges: list[int]) -> list[dict]:
         inv = {v: k for k, v in self.node_index.items()}
@@ -270,15 +322,24 @@ class WalkGraph:
                 continue  # вышли на тротуар крупной улицы или ушли с него — не пересечение
             # иначе: размеченный переход или путь «подходит» к крупной дороге и продолжается
             # по другую сторону — это пересечение проезжей части
-            road = sorted(roads, key=lambda c: ["trunk", "primary", "secondary"].index(c.split("_")[0])
-                          if c.split("_")[0] in ("trunk", "primary", "secondary") else 9)[0]
+            road = sorted(
+                roads,
+                key=lambda c: ["trunk", "primary", "secondary"].index(c.split("_")[0])
+                if c.split("_")[0] in ("trunk", "primary", "secondary")
+                else 9,
+            )[0]
             x, y = self.xy[n]
             if any(math.hypot(x - c["x"], y - c["y"]) < 35 for c in found):
                 continue
-            found.append({
-                "x": x, "y": y, "road_class": road, "road": self.node_road_names.get(osm_id) or ROAD_NAMES_RU.get(road, "дорога"),
-                "signals": bool(explicit and explicit.get("signals")),
-            })
+            found.append(
+                {
+                    "x": x,
+                    "y": y,
+                    "road_class": road,
+                    "road": self.node_road_names.get(osm_id) or ROAD_NAMES_RU.get(road, "дорога"),
+                    "signals": bool(explicit and explicit.get("signals")),
+                }
+            )
         return found
 
     def _rail(self, nodes: list[int], edges: list[int]) -> dict | None:
@@ -324,7 +385,7 @@ class DriveGraph:
             c = w["cls"]
             if c not in DRIVE_SPEED or not w.get("drive", True):
                 continue
-            speed = (w.get("maxspeed") or DRIVE_SPEED[c])
+            speed = w.get("maxspeed") or DRIVE_SPEED[c]
             speed = min(speed, DRIVE_SPEED[c] + 10)
             idx = []
             for n, (x, y) in zip(w["nodes"], w["xy"]):

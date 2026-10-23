@@ -79,9 +79,28 @@ POI_RULES = [
     ("ice_cream", "amenity", {"ice_cream"}),
 ]
 POI_KEEP_TAGS = {
-    "opening_hours", "healthcare:speciality", "capacity", "fee", "access", "operator", "brand", "cuisine",
-    "outdoor_seating", "wheelchair", "socket:type2", "socket:chademo", "socket:type2_combo", "parking",
-    "surface", "religion", "station", "train", "website", "level", "covered", "supervised",
+    "opening_hours",
+    "healthcare:speciality",
+    "capacity",
+    "fee",
+    "access",
+    "operator",
+    "brand",
+    "cuisine",
+    "outdoor_seating",
+    "wheelchair",
+    "socket:type2",
+    "socket:chademo",
+    "socket:type2_combo",
+    "parking",
+    "surface",
+    "religion",
+    "station",
+    "train",
+    "website",
+    "level",
+    "covered",
+    "supervised",
 }
 AREA_RULES = [
     ("beach", "natural", {"beach"}),
@@ -104,21 +123,84 @@ AREA_RULES = [
 ]
 VEG_HEIGHT = {"wood": 16, "park": 11, "scrub": 3}
 DEFAULT_LEVELS = {
-    "house": 2, "detached": 2, "semidetached_house": 2, "terrace": 2, "bungalow": 1, "cabin": 1,
-    "garage": 1, "garages": 1, "shed": 1, "roof": 1, "kiosk": 1, "hut": 1, "service": 1, "carport": 1,
-    "greenhouse": 1, "toilets": 1, "transformer_tower": 1, "industrial": 2, "warehouse": 2, "retail": 2,
-    "commercial": 3, "office": 4, "apartments": 5, "residential": 5, "dormitory": 5, "hotel": 5,
-    "hospital": 5, "school": 3, "kindergarten": 2, "university": 4, "public": 3, "civic": 3,
-    "church": 2, "cathedral": 3, "train_station": 2, "sports_hall": 2, "construction": 4, "yes": 3,
+    "house": 2,
+    "detached": 2,
+    "semidetached_house": 2,
+    "terrace": 2,
+    "bungalow": 1,
+    "cabin": 1,
+    "garage": 1,
+    "garages": 1,
+    "shed": 1,
+    "roof": 1,
+    "kiosk": 1,
+    "hut": 1,
+    "service": 1,
+    "carport": 1,
+    "greenhouse": 1,
+    "toilets": 1,
+    "transformer_tower": 1,
+    "industrial": 2,
+    "warehouse": 2,
+    "retail": 2,
+    "commercial": 3,
+    "office": 4,
+    "apartments": 5,
+    "residential": 5,
+    "dormitory": 5,
+    "hotel": 5,
+    "hospital": 5,
+    "school": 3,
+    "kindergarten": 2,
+    "university": 4,
+    "public": 3,
+    "civic": 3,
+    "church": 2,
+    "cathedral": 3,
+    "train_station": 2,
+    "sports_hall": 2,
+    "construction": 4,
+    "yes": 3,
 }
 WALK_CLASSES = {
-    "footway", "path", "pedestrian", "steps", "living_street", "residential", "service", "unclassified",
-    "tertiary", "tertiary_link", "secondary", "secondary_link", "primary", "primary_link", "trunk",
-    "trunk_link", "track", "cycleway", "corridor", "bridleway", "road", "platform",
+    "footway",
+    "path",
+    "pedestrian",
+    "steps",
+    "living_street",
+    "residential",
+    "service",
+    "unclassified",
+    "tertiary",
+    "tertiary_link",
+    "secondary",
+    "secondary_link",
+    "primary",
+    "primary_link",
+    "trunk",
+    "trunk_link",
+    "track",
+    "cycleway",
+    "corridor",
+    "bridleway",
+    "road",
+    "platform",
 }
 DRIVE_CLASSES = {
-    "motorway", "motorway_link", "trunk", "trunk_link", "primary", "primary_link", "secondary",
-    "secondary_link", "tertiary", "tertiary_link", "unclassified", "residential", "living_street", "service",
+    "motorway",
+    "motorway_link",
+    "trunk",
+    "trunk_link",
+    "primary",
+    "primary_link",
+    "secondary",
+    "secondary_link",
+    "tertiary",
+    "tertiary_link",
+    "unclassified",
+    "residential",
+    "living_street",
+    "service",
     "road",
 }
 
@@ -168,14 +250,19 @@ class Collector(osmium.SimpleHandler):
             self.hotels.append({"osm": osm, "lon": lon, "lat": lat, "tags": t, "poly": None})
         if t.get("highway") == "crossing" or t.get("crossing"):
             self.crossing_nodes[n.id] = {
-                "signals": t.get("crossing") in {"traffic_signals", "pelican", "toucan"} or t.get("crossing_ref") in {"pelican", "toucan"}
+                "signals": t.get("crossing") in {"traffic_signals", "pelican", "toucan"}
+                or t.get("crossing_ref") in {"pelican", "toucan"}
                 or "traffic_signals" in t.get("crossing", ""),
             }
         if t.get("railway") in {"crossing", "level_crossing"}:
             self.rail_crossings[n.id] = t.get("railway")
         if t.get("natural") == "peak" and t.get("name") and t.get("ele"):
             self.peaks.append({"osm": osm, "name": t["name"], "ele": num(t["ele"]), "lon": lon, "lat": lat})
-        if t.get("railway") in {"stop", "station", "halt", "platform"} or t.get("public_transport") in {"stop_position", "platform", "station"}:
+        if t.get("railway") in {"stop", "station", "halt", "platform"} or t.get("public_transport") in {
+            "stop_position",
+            "platform",
+            "station",
+        }:
             self.stop_nodes[n.id] = (lon, lat)
         if t.get("natural") == "tree":
             self.trees.append((lon, lat, num(t.get("height"), 9)))
@@ -252,8 +339,17 @@ class Collector(osmium.SimpleHandler):
         t = tags_dict(r.tags)
         if t.get("type") == "route" and t.get("route") in {"train", "bus", "trolleybus"}:
             stops = [m.ref for m in r.members if m.type == "n" and (m.role.startswith("stop") or m.role.startswith("platform"))]
-            self.routes.append({"osm": f"r{r.id}", "route": t.get("route"), "name": t.get("name"),
-                                "ref": t.get("ref"), "from": t.get("from"), "to": t.get("to"), "stops": stops})
+            self.routes.append(
+                {
+                    "osm": f"r{r.id}",
+                    "route": t.get("route"),
+                    "name": t.get("name"),
+                    "ref": t.get("ref"),
+                    "from": t.get("from"),
+                    "to": t.get("to"),
+                    "stops": stops,
+                }
+            )
 
 
 def poi_category(t: dict) -> str | None:
@@ -298,7 +394,7 @@ def load_dem(dem_dir: str):
     for a, lon0, lat0, _sx, _sy in tiles:
         c0 = int(round((lon0 - lon_min) / res))
         r0 = int(round((lat_max - lat0) / res))
-        mosaic[r0:r0 + a.shape[0], c0:c0 + a.shape[1]] = a
+        mosaic[r0 : r0 + a.shape[0], c0 : c0 + a.shape[1]] = a
     return mosaic, lon_min, lat_max, res
 
 
@@ -310,8 +406,12 @@ def sample_dem(dem, lon, lat):
     r0 = np.clip(np.floor(fr).astype(int), 0, mosaic.shape[0] - 2)
     tx = np.clip(fc - c0, 0, 1)
     ty = np.clip(fr - r0, 0, 1)
-    v = (mosaic[r0, c0] * (1 - tx) * (1 - ty) + mosaic[r0, c0 + 1] * tx * (1 - ty)
-         + mosaic[r0 + 1, c0] * (1 - tx) * ty + mosaic[r0 + 1, c0 + 1] * tx * ty)
+    v = (
+        mosaic[r0, c0] * (1 - tx) * (1 - ty)
+        + mosaic[r0, c0 + 1] * tx * (1 - ty)
+        + mosaic[r0 + 1, c0] * (1 - tx) * ty
+        + mosaic[r0 + 1, c0 + 1] * tx * ty
+    )
     return v
 
 
@@ -407,8 +507,11 @@ def main() -> None:
     print("reading OSM ...", flush=True)
     col = Collector(eb)
     col.apply_file(args.pbf, locations=True, idx="flex_mem")
-    print(f"hotels={len(col.hotels)} buildings={len(col.buildings)} roads={len(col.roads)} rails={len(col.rails)} "
-          f"pois={len(col.pois)} areas={len(col.areas)} coast={len(col.coast)} peaks={len(col.peaks)}", flush=True)
+    print(
+        f"hotels={len(col.hotels)} buildings={len(col.buildings)} roads={len(col.roads)} rails={len(col.rails)} "
+        f"pois={len(col.pois)} areas={len(col.areas)} coast={len(col.coast)} peaks={len(col.peaks)}",
+        flush=True,
+    )
 
     lat0 = (hb[1] + hb[3]) / 2
     lon0 = (hb[0] + hb[2]) / 2
@@ -520,8 +623,20 @@ def main() -> None:
                     if levels is None:
                         levels, lv_src = max(1, int(round(hp / FLOOR_M))), "osm_parts"
         c = poly.centroid
-        recs.append({"b": b, "poly": poly, "t": t, "btype": btype, "levels": levels, "lv_src": lv_src,
-                     "height": height, "h_src": h_src, "cx": c.x, "cy": c.y})
+        recs.append(
+            {
+                "b": b,
+                "poly": poly,
+                "t": t,
+                "btype": btype,
+                "levels": levels,
+                "lv_src": lv_src,
+                "height": height,
+                "h_src": h_src,
+                "cx": c.x,
+                "cy": c.y,
+            }
+        )
 
     # Этажность неразмеченных зданий: медиана размеченных соседей в радиусе 150 м (не менее 3).
     # Типы «house/garage/...» оставляем по умолчанию — для них соседи не показательны.
@@ -559,8 +674,10 @@ def main() -> None:
         "within1_neighbors": round(float(np.mean(np.array(errs_n) <= 1)), 3) if errs_n else None,
         "mae_default": round(float(np.mean(errs_d)), 2) if errs_d else None,
         "within1_default": round(float(np.mean(np.array(errs_d) <= 1)), 3) if errs_d else None,
-        "dsm_check": {"note": "оценка высоты по Copernicus DSM (30 м) проверена на 19 тыс. зданиях с этажностью OSM: "
-                              "корреляция ≈ 0,1, источник отклонён"},
+        "dsm_check": {
+            "note": "оценка высоты по Copernicus DSM (30 м) проверена на 19 тыс. зданиях с этажностью OSM: "
+            "корреляция ≈ 0,1, источник отклонён"
+        },
     }
     print("levels imputation validation:", impute_stats, flush=True)
     for r in recs:
@@ -585,15 +702,35 @@ def main() -> None:
         idx = len(buildings_out)
         rasterize_polygon(bld_h, poly, int(min(255, round(r["height"]))), mode="max", ids=bld_id, id_value=idx)
         rec = {
-            "osm": r["b"]["osm"], "xy": np.round(np.asarray(poly.exterior.coords), 1).ravel().tolist(),
-            "h": round(float(r["height"]), 1), "h_src": r["h_src"], "lv": r["levels"], "lv_src": r["lv_src"],
+            "osm": r["b"]["osm"],
+            "xy": np.round(np.asarray(poly.exterior.coords), 1).ravel().tolist(),
+            "h": round(float(r["height"]), 1),
+            "h_src": r["h_src"],
+            "lv": r["levels"],
+            "lv_src": r["lv_src"],
             "t": r["btype"],
         }
         if t.get("name"):
             rec["name"] = t["name"]
-        extra = {k: t[k] for k in ("start_date", "building:architecture", "heritage", "heritage:operator",
-                                    "ref:okn", "wikidata", "wikipedia", "historic", "architect", "addr:street",
-                                    "addr:housenumber", "roof:levels", "building:levels:underground") if k in t}
+        extra = {
+            k: t[k]
+            for k in (
+                "start_date",
+                "building:architecture",
+                "heritage",
+                "heritage:operator",
+                "ref:okn",
+                "wikidata",
+                "wikipedia",
+                "historic",
+                "architect",
+                "addr:street",
+                "addr:housenumber",
+                "roof:levels",
+                "building:levels:underground",
+            )
+            if k in t
+        }
         if extra:
             rec["tags"] = extra
         buildings_out.append(rec)
@@ -632,13 +769,27 @@ def main() -> None:
         line = LineString(line_xy)
         in_walk = line.intersects(walk_box)
         drivable = cls in DRIVE_CLASSES and t.get("motor_vehicle") != "no" and t.get("access") not in {"no"}
-        major = cls in {"motorway", "motorway_link", "trunk", "trunk_link", "primary", "primary_link", "secondary",
-                        "secondary_link", "tertiary", "tertiary_link"}
+        major = cls in {
+            "motorway",
+            "motorway_link",
+            "trunk",
+            "trunk_link",
+            "primary",
+            "primary_link",
+            "secondary",
+            "secondary_link",
+            "tertiary",
+            "tertiary_link",
+        }
         if not in_walk and not (drivable and major):
             continue
         foot = t.get("foot")
         access = t.get("access")
-        walk = cls in WALK_CLASSES and foot != "no" and not (access in {"no", "private"} and foot not in {"yes", "designated", "permissive"})
+        walk = (
+            cls in WALK_CLASSES
+            and foot != "no"
+            and not (access in {"no", "private"} and foot not in {"yes", "designated", "permissive"})
+        )
         if cls in {"trunk", "trunk_link"} and t.get("sidewalk") in {"no", "none"} and foot != "yes":
             walk = False
         oneway = 0
@@ -648,8 +799,12 @@ def main() -> None:
         elif ow == "-1":
             oneway = -1
         rec = {
-            "id": r["osm"], "cls": cls, "nodes": r["nodes"], "xy": np.round(line_xy, 1).tolist(),
-            "walk": bool(walk and in_walk), "drive": bool(drivable),
+            "id": r["osm"],
+            "cls": cls,
+            "nodes": r["nodes"],
+            "xy": np.round(line_xy, 1).tolist(),
+            "walk": bool(walk and in_walk),
+            "drive": bool(drivable),
         }
         if t.get("name"):
             rec["name"] = t["name"]
@@ -710,8 +865,7 @@ def main() -> None:
         if key in seen:
             continue
         seen.add(key)
-        rec = {"osm": p["osm"], "cat": p["cat"], "x": round(float(x), 1), "y": round(float(y), 1),
-               "tags": keep_tags(p["tags"])}
+        rec = {"osm": p["osm"], "cat": p["cat"], "x": round(float(x), 1), "y": round(float(y), 1), "tags": keep_tags(p["tags"])}
         if p["tags"].get("name"):
             rec["name"] = p["tags"]["name"]
         pois_out.append(rec)
@@ -727,8 +881,12 @@ def main() -> None:
         simp = poly.simplify(1.5)
         if isinstance(simp, MultiPolygon):
             simp = max(simp.geoms, key=lambda g: g.area)
-        rec = {"osm": a["osm"], "cat": a["cat"], "xy": np.round(np.asarray(simp.exterior.coords), 1).ravel().tolist(),
-               "area_m2": round(poly.area)}
+        rec = {
+            "osm": a["osm"],
+            "cat": a["cat"],
+            "xy": np.round(np.asarray(simp.exterior.coords), 1).ravel().tolist(),
+            "area_m2": round(poly.area),
+        }
         t = a["tags"]
         for k in ("name", "surface", "access", "fee", "operator", "supervised", "opening_hours"):
             if t.get(k):
@@ -766,16 +924,28 @@ def main() -> None:
                 bidx = int(min(cands, key=lambda i: bpolys[i].distance(pt)))
         addr = ", ".join(v for v in [t.get("addr:street"), t.get("addr:housenumber")] if v) or None
         stars = num(t.get("stars"))
-        hotels_out.append({
-            "id": f"osm-{h['osm']}", "osm": h["osm"], "name": name, "kind": t.get("tourism"),
-            "stars": int(stars) if stars else None, "lat": round(h["lat"], 7), "lon": round(h["lon"], 7),
-            "x": round(float(x), 1), "y": round(float(y), 1), "address": addr,
-            "website": t.get("website") or t.get("contact:website"), "phone": t.get("phone") or t.get("contact:phone"),
-            "building": bidx,
-            "tags": {k: v for k, v in t.items() if not k.startswith("name:") and k not in {"source"}},
-        })
-    print(f"hotels in bbox with name: {len(hotels_out)}; with building: {sum(1 for h in hotels_out if h['building'] is not None)}",
-          flush=True)
+        hotels_out.append(
+            {
+                "id": f"osm-{h['osm']}",
+                "osm": h["osm"],
+                "name": name,
+                "kind": t.get("tourism"),
+                "stars": int(stars) if stars else None,
+                "lat": round(h["lat"], 7),
+                "lon": round(h["lon"], 7),
+                "x": round(float(x), 1),
+                "y": round(float(y), 1),
+                "address": addr,
+                "website": t.get("website") or t.get("contact:website"),
+                "phone": t.get("phone") or t.get("contact:phone"),
+                "building": bidx,
+                "tags": {k: v for k, v in t.items() if not k.startswith("name:") and k not in {"source"}},
+            }
+        )
+    print(
+        f"hotels in bbox with name: {len(hotels_out)}; with building: {sum(1 for h in hotels_out if h['building'] is not None)}",
+        flush=True,
+    )
     # агент-дедупликатор (тот же код, что в приложении): дубли «точка + контур», корпуса, подписи тёзок
     streets = [(w["name"], LineString(w["xy"])) for w in ways_out if w.get("name") and len(w["xy"]) >= 2]
     hotels_out, dedup_log = dedup_resolve(hotels_out, lambda i: bpolys[i], lambda i: buildings_out[i].get("lv"), streets)
@@ -787,8 +957,17 @@ def main() -> None:
         if p["ele"] is None or p["ele"] < 250:
             continue
         x, y = proj.to_xy(p["lon"], p["lat"])
-        peaks_out.append({"osm": p["osm"], "name": p["name"], "ele": p["ele"], "x": round(float(x), 1),
-                          "y": round(float(y), 1), "lat": p["lat"], "lon": p["lon"]})
+        peaks_out.append(
+            {
+                "osm": p["osm"],
+                "name": p["name"],
+                "ele": p["ele"],
+                "x": round(float(x), 1),
+                "y": round(float(y), 1),
+                "lat": p["lat"],
+                "lon": p["lon"],
+            }
+        )
 
     # ---------------- запись ----------------
     def dump_gz(name, obj):
@@ -801,9 +980,14 @@ def main() -> None:
 
     np.savez_compressed(
         os.path.join(args.out, "rasters.npz"),
-        bld_h=bld_h.a, bld_id=bld_id, veg_h=veg.a, sea=sea_near.a,
-        dtm_near=np.round(dtm_near * 10).astype(np.int32) / 10, dsm_near=np.round(dsm_near * 10).astype(np.int32) / 10,
-        dem_far=np.round(dem_far).astype(np.int16), sea_far=sea_far,
+        bld_h=bld_h.a,
+        bld_id=bld_id,
+        veg_h=veg.a,
+        sea=sea_near.a,
+        dtm_near=np.round(dtm_near * 10).astype(np.int32) / 10,
+        dsm_near=np.round(dsm_near * 10).astype(np.int32) / 10,
+        dem_far=np.round(dem_far).astype(np.int16),
+        sea_far=sea_far,
     )
     dump_gz("buildings.json.gz", buildings_out)
     dump_gz("roads.json.gz", roads_doc)
@@ -847,7 +1031,10 @@ def main() -> None:
                 served.append(osm)
         if served:
             train_routes.append({"osm": r["osm"], "name": r.get("name"), "ref": r.get("ref"), "stop_osm": served})
-    aero = next((a for a in col.areas if a["cat"] == "aerodrome" and (a["tags"].get("iata") == "AER" or a["tags"].get("name") == "Сочи")), None)
+    aero = next(
+        (a for a in col.areas if a["cat"] == "aerodrome" and (a["tags"].get("iata") == "AER" or a["tags"].get("name") == "Сочи")),
+        None,
+    )
     airport = None
     if aero is not None:
         c = Polygon(aero["ring"]).centroid
@@ -864,20 +1051,52 @@ def main() -> None:
         if b is None or not name:
             continue
         pts = np.asarray(b["xy"]).reshape(-1, 2)
-        landmarks.append({"name": name, "osm": osm, "x": float(pts[:, 0].mean()), "y": float(pts[:, 1].mean()),
-                          "height": float(h or b["h"]), "height_src": "OSM " + b["h_src"], "radius": 20, "max_km": maxkm})
-    tallest = max((b for b in buildings_out if b["h_src"] in {"osm_levels", "osm_height"} and b.get("name")),
-                  key=lambda b: b["h"], default=None)
+        landmarks.append(
+            {
+                "name": name,
+                "osm": osm,
+                "x": float(pts[:, 0].mean()),
+                "y": float(pts[:, 1].mean()),
+                "height": float(h or b["h"]),
+                "height_src": "OSM " + b["h_src"],
+                "radius": 20,
+                "max_km": maxkm,
+            }
+        )
+    tallest = max(
+        (b for b in buildings_out if b["h_src"] in {"osm_levels", "osm_height"} and b.get("name")),
+        key=lambda b: b["h"],
+        default=None,
+    )
     if tallest is not None:
         pts = np.asarray(tallest["xy"]).reshape(-1, 2)
-        landmarks.append({"name": f"высотка «{tallest['name']}» ({tallest['h']:.0f} м)", "osm": tallest["osm"],
-                          "x": float(pts[:, 0].mean()), "y": float(pts[:, 1].mean()), "height": float(tallest["h"]),
-                          "height_src": "OSM " + tallest["h_src"], "radius": 20, "max_km": 10})
+        landmarks.append(
+            {
+                "name": f"высотка «{tallest['name']}» ({tallest['h']:.0f} м)",
+                "osm": tallest["osm"],
+                "x": float(pts[:, 0].mean()),
+                "y": float(pts[:, 1].mean()),
+                "height": float(tallest["h"]),
+                "height_src": "OSM " + tallest["h_src"],
+                "radius": 20,
+                "max_km": 10,
+            }
+        )
     akhun = next((p for p in peaks_out if p["name"] == "Ахун"), None)
     if akhun is not None:
-        landmarks.append({"name": "Смотровая башня на горе Ахун", "osm": akhun["osm"], "x": akhun["x"], "y": akhun["y"],
-                          "height": 30.0, "height_src": "высота башни ≈30 м (справочно), отметка вершины — OSM ele",
-                          "radius": 40, "max_km": 20, "absolute_ground": akhun["ele"]})
+        landmarks.append(
+            {
+                "name": "Смотровая башня на горе Ахун",
+                "osm": akhun["osm"],
+                "x": akhun["x"],
+                "y": akhun["y"],
+                "height": 30.0,
+                "height_src": "высота башни ≈30 м (справочно), отметка вершины — OSM ele",
+                "radius": 40,
+                "max_km": 20,
+                "absolute_ground": akhun["ele"],
+            }
+        )
 
     dump("landmarks.json", landmarks)
     region = {
@@ -895,15 +1114,27 @@ def main() -> None:
         "train_routes": train_routes,
         "built_at": dt.date.today().isoformat(),
         "sources": {
-            "osm": {"title": "OpenStreetMap", "snapshot": args.snapshot, "license": "ODbL",
-                    "url": "https://osm-pds.s3.amazonaws.com/ (planet PBF)"},
-            "dem": {"title": "Copernicus DEM GLO-30 (DSM)", "snapshot": "2011–2015", "license": "Copernicus DEM licence",
-                    "url": "https://copernicus-dem-30m.s3.amazonaws.com/"},
+            "osm": {
+                "title": "OpenStreetMap",
+                "snapshot": args.snapshot,
+                "license": "ODbL",
+                "url": "https://osm-pds.s3.amazonaws.com/ (planet PBF)",
+            },
+            "dem": {
+                "title": "Copernicus DEM GLO-30 (DSM)",
+                "snapshot": "2011–2015",
+                "license": "Copernicus DEM licence",
+                "url": "https://copernicus-dem-30m.s3.amazonaws.com/",
+            },
             "climate": {"title": "NOAA GHCN-Daily + NOAA OISST v2.1", "license": "public domain"},
         },
         "stats": {
-            "buildings": len(buildings_out), "height_sources": dict(lv_src_count), "pois": len(pois_out),
-            "roads": len(ways_out), "hotels": len(hotels_out), "areas": len(areas_out),
+            "buildings": len(buildings_out),
+            "height_sources": dict(lv_src_count),
+            "pois": len(pois_out),
+            "roads": len(ways_out),
+            "hotels": len(hotels_out),
+            "areas": len(areas_out),
             "levels_imputation": impute_stats,
         },
     }

@@ -18,8 +18,12 @@ from ..geo.analysis import facade_acc
 from ..knowledge.registry import all_specs
 from . import concierge
 
-REASON = {"sea_view": "видно море", "mountain_view": "видны горы", "landmark_view": "видны городские ориентиры",
-          "window_outlook": "открытый вид без стены напротив"}
+REASON = {
+    "sea_view": "видно море",
+    "mountain_view": "видны горы",
+    "landmark_view": "видны городские ориентиры",
+    "window_outlook": "открытый вид без стены напротив",
+}
 # просьба, если отель это умеет (по данным), и вопрос, если неизвестно
 ASK = {
     "quietness": ("Важна тишина ночью.", "Насколько тихо ночью в номерах с этой стороны?"),
@@ -85,10 +89,22 @@ def build(session: Session, hotel_id: str, text: str) -> dict | None:
         polished = _polish(text_rules, room)
         if polished:
             method, out = "llm", polished
-    reasons = [{"title": n["title"], "status": n["status"], "text": n["text"], "sources": n["sources"],
-                "confidence": n["confidence"]} for n in needs if n["status"] != "unknown"]
-    return {"hotel": r["hotel"], "query": f["query"]["text"], "text": out, "text_rules": text_rules, "method": method,
-            "reasons": reasons, "questions": questions, "room": room, "share_text": (room or {}).get("share_text")}
+    reasons = [
+        {"title": n["title"], "status": n["status"], "text": n["text"], "sources": n["sources"], "confidence": n["confidence"]}
+        for n in needs
+        if n["status"] != "unknown"
+    ]
+    return {
+        "hotel": r["hotel"],
+        "query": f["query"]["text"],
+        "text": out,
+        "text_rules": text_rules,
+        "method": method,
+        "reasons": reasons,
+        "questions": questions,
+        "room": room,
+        "share_text": (room or {}).get("share_text"),
+    }
 
 
 def _polish(text: str, room: dict | None) -> str | None:
@@ -96,7 +112,10 @@ def _polish(text: str, room: dict | None) -> str | None:
     res = llm.chat_json(
         "Ты помогаешь гостю написать отелю короткое вежливое пожелание к бронированию. Перепиши текст живым языком, "
         "сохранив все факты: сторону здания, этаж, просьбы и вопросы. Ничего не добавляй от себя. "
-        'Ответ — JSON {"text": "..."}.', json.dumps({"text": text}, ensure_ascii=False), max_tokens=500)
+        'Ответ — JSON {"text": "..."}.',
+        json.dumps({"text": text}, ensure_ascii=False),
+        max_tokens=500,
+    )
     out = (res or {}).get("text")
     if not isinstance(out, str) or not out.strip():
         return None

@@ -103,11 +103,21 @@ class RegionData:
             poly = Polygon(ring)
             if not poly.is_valid:
                 poly = poly.buffer(0)
-            out.append(Building(
-                idx=i, osm=b["osm"], poly=poly, height=b["h"], height_src=b["h_src"],
-                levels=b.get("lv"), levels_src=b.get("lv_src", "none"), btype=b.get("t", "yes"),
-                name=b.get("name"), tags=b.get("tags", {}), dsm_h=b.get("dsm_h"),
-            ))
+            out.append(
+                Building(
+                    idx=i,
+                    osm=b["osm"],
+                    poly=poly,
+                    height=b["h"],
+                    height_src=b["h_src"],
+                    levels=b.get("lv"),
+                    levels_src=b.get("lv_src", "none"),
+                    btype=b.get("t", "yes"),
+                    name=b.get("name"),
+                    tags=b.get("tags", {}),
+                    dsm_h=b.get("dsm_h"),
+                )
+            )
         return out
 
     @cached_property
@@ -200,8 +210,7 @@ class RegionData:
             poly = Polygon(np.column_stack([x, y])).buffer(0)
             r = self.rasters
             new_id = -1000 - override_id
-            rasterize_polygon(r["bld_h"], poly, min(255, int(round(height_m))), mode="max",
-                              ids=r["bld_id"].a, id_value=new_id)
+            rasterize_polygon(r["bld_h"], poly, min(255, int(round(height_m))), mode="max", ids=r["bld_id"].a, id_value=new_id)
             self._overrides_applied.append(override_id)
             log.info("Применено изменение среды #%s: здание %.0f м", override_id, height_m)
 

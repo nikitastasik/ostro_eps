@@ -35,8 +35,17 @@ SEED_TABLES = [
     ("changes", Change),
     ("search_log", SearchLog),
 ]
-DATE_FIELDS = {"observed_at", "valid_until", "created_at", "updated_at", "answered_at", "resolved_at", "started_at",
-               "finished_at", "ts"}
+DATE_FIELDS = {
+    "observed_at",
+    "valid_until",
+    "created_at",
+    "updated_at",
+    "answered_at",
+    "resolved_at",
+    "started_at",
+    "finished_at",
+    "ts",
+}
 
 
 def resolved_hotels() -> tuple[list[dict], list[dict]]:
@@ -56,18 +65,38 @@ def load_hotels(session: Session) -> int:
         building = {"idx": b_idx, "x": h["x"], "y": h["y"]}
         if b_idx is not None:
             b = rd.buildings[b_idx]
-            building.update({"osm": b.osm, "levels": b.levels, "levels_src": b.levels_src, "height": b.height,
-                             "height_src": b.height_src,
-                             "facades": [f.as_dict() for f in building_facades(b.poly)]})
+            building.update(
+                {
+                    "osm": b.osm,
+                    "levels": b.levels,
+                    "levels_src": b.levels_src,
+                    "height": b.height,
+                    "height_src": b.height_src,
+                    "facades": [f.as_dict() for f in building_facades(b.poly)],
+                }
+            )
         if h.get("complex"):
             building.update({"complex_id": h["complex"]["id"], "corpus": h["complex"]["label"]})
         tags = dict(h.get("tags") or {})
         tags["_osm"] = h["osm"]
         if h.get("merged_from"):
             tags["_merged_from"] = h["merged_from"]
-        session.add(Hotel(id=h["id"], name=h["name"], kind=h["kind"], stars=h.get("stars"), lat=h["lat"], lon=h["lon"],
-                          address=h.get("address"), website=h.get("website"), phone=h.get("phone"), osm_tags=tags,
-                          building=building, district=h.get("hint")))
+        session.add(
+            Hotel(
+                id=h["id"],
+                name=h["name"],
+                kind=h["kind"],
+                stars=h.get("stars"),
+                lat=h["lat"],
+                lon=h["lon"],
+                address=h.get("address"),
+                website=h.get("website"),
+                phone=h.get("phone"),
+                osm_tags=tags,
+                building=building,
+                district=h.get("hint"),
+            )
+        )
         n += 1
     session.flush()
     return n
@@ -126,8 +155,9 @@ def load_seed(session: Session, path, shift_to_now: bool = True) -> dict:
         counts[name] = len(objs)
     if engine.dialect.name == "postgresql":
         for table in ["facts", "questions", "conflicts", "agent_runs", "agent_steps", "changes", "search_log"]:
-            session.execute(text(f"SELECT setval(pg_get_serial_sequence('{table}', 'id'), "
-                                 f"COALESCE((SELECT MAX(id) FROM {table}), 1))"))
+            session.execute(
+                text(f"SELECT setval(pg_get_serial_sequence('{table}', 'id'), " f"COALESCE((SELECT MAX(id) FROM {table}), 1))")
+            )
     invalidate()
     return counts
 
@@ -141,14 +171,27 @@ def log_dedup(session: Session) -> AgentRun | None:
     cx = [e for e in entries if e["type"] == "complex"]
     names = [e for e in entries if e["type"] == "namesakes"]
     now = utcnow()
-    run = AgentRun(kind="dedup", trigger="bootstrap", status="done", created_at=now, started_at=now, finished_at=now,
-                   params={"merge_m": dedup.MERGE_M, "complex_m": dedup.COMPLEX_M},
-                   summary=f"склеено дублей: {len(merges)}, комплексов с корпусами: {len(cx)}, групп тёзок с подписями: {len(names)}")
+    run = AgentRun(
+        kind="dedup",
+        trigger="bootstrap",
+        status="done",
+        created_at=now,
+        started_at=now,
+        finished_at=now,
+        params={"merge_m": dedup.MERGE_M, "complex_m": dedup.COMPLEX_M},
+        summary=f"склеено дублей: {len(merges)}, комплексов с корпусами: {len(cx)}, групп тёзок с подписями: {len(names)}",
+    )
     session.add(run)
     session.flush()
-    steps = [("plan", "Ищу один и тот же отель, нанесённый в OSM дважды, корпуса комплексов и тёзок: одинаковое "
-                      f"имя и до {dedup.MERGE_M:.0f} м или точка в контуре здания — дубль; до {dedup.COMPLEX_M:.0f} м "
-                      "при совпадающих тегах — корпуса", {})]
+    steps = [
+        (
+            "plan",
+            "Ищу один и тот же отель, нанесённый в OSM дважды, корпуса комплексов и тёзок: одинаковое "
+            f"имя и до {dedup.MERGE_M:.0f} м или точка в контуре здания — дубль; до {dedup.COMPLEX_M:.0f} м "
+            "при совпадающих тегах — корпуса",
+            {},
+        )
+    ]
     steps += [("decision", dedup.describe(e), e) for e in entries]
     steps.append(("result", run.summary[:1].upper() + run.summary[1:], {}))
     for i, (kind, msg, payload) in enumerate(steps):

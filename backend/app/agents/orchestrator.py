@@ -64,18 +64,41 @@ class RunLogger:
         self.idx = session.scalar(select(func.count(AgentStep.id)).where(AgentStep.run_id == run.id)) or 0
         self.counts: dict[str, int] = {}
 
-    def step(self, agent: str, kind: str, message: str, char_key: str | None = None, payload: dict | None = None,
-             duration_ms: int | None = None) -> None:
+    def step(
+        self,
+        agent: str,
+        kind: str,
+        message: str,
+        char_key: str | None = None,
+        payload: dict | None = None,
+        duration_ms: int | None = None,
+    ) -> None:
         self.counts[kind] = self.counts.get(kind, 0) + 1
         if not self.store:
             return
-        self.session.add(AgentStep(run_id=self.run_id, idx=self.idx, agent=agent, kind=kind, char_key=char_key,
-                                   message=message[:4000], payload=_clean(payload or {}), duration_ms=duration_ms))
+        self.session.add(
+            AgentStep(
+                run_id=self.run_id,
+                idx=self.idx,
+                agent=agent,
+                kind=kind,
+                char_key=char_key,
+                message=message[:4000],
+                payload=_clean(payload or {}),
+                duration_ms=duration_ms,
+            )
+        )
         self.idx += 1
 
 
-def create_run(session: Session, kind: str, hotel_id: str | None = None, char_keys: list[str] | None = None,
-               trigger: str = "manual", params: dict | None = None) -> AgentRun:
+def create_run(
+    session: Session,
+    kind: str,
+    hotel_id: str | None = None,
+    char_keys: list[str] | None = None,
+    trigger: str = "manual",
+    params: dict | None = None,
+) -> AgentRun:
     run = AgentRun(kind=kind, hotel_id=hotel_id, char_keys=char_keys or [], trigger=trigger, params=_clean(params or {}))
     session.add(run)
     session.flush()
@@ -83,15 +106,20 @@ def create_run(session: Session, kind: str, hotel_id: str | None = None, char_ke
 
 
 # ----------------------------------------------------------------------------------------
-def collect_hotel(session: Session, hotel: Hotel, keys: list[str] | None, logger: RunLogger, reason: str,
-                  allow_questions: bool = True) -> dict:
+def collect_hotel(
+    session: Session, hotel: Hotel, keys: list[str] | None, logger: RunLogger, reason: str, allow_questions: bool = True
+) -> dict:
     specs = all_specs(session)
     order = [k for k in ordered_keys(specs) if keys is None or k in keys]
     if keys and "building_levels" not in keys and any(k in VIEW_KEYS for k in order):
         pass  # этажность берём из текущего знания
     ctx = HotelContext(session, hotel, get_region(), logger)
-    logger.step("Оркестратор", "plan", f"{quote(hotel.label)}: собираю {len(order)} {plural(len(order), 'характеристику', 'характеристики', 'характеристик')} в порядке зависимостей",
-                payload={"order": order})
+    logger.step(
+        "Оркестратор",
+        "plan",
+        f"{quote(hotel.label)}: собираю {len(order)} {plural(len(order), 'характеристику', 'характеристики', 'характеристик')} в порядке зависимостей",
+        payload={"order": order},
+    )
     stats = {"ok": 0, "conflict": 0, "asked": 0, "unknown": 0, "stale": 0}
     for key in order:
         rv = collector.collect(ctx, specs[key], logger.run_id, logger, reason=reason, allow_questions=allow_questions)
@@ -115,8 +143,13 @@ def _check_stop() -> None:
         raise Stopped("запуск остановлен сбросом демо")
 
 
-STATS_RU = {"ok": "готово", "conflict": "противоречий", "asked": "спросили отельера", "unknown": "нет данных",
-            "stale": "устарело"}
+STATS_RU = {
+    "ok": "готово",
+    "conflict": "противоречий",
+    "asked": "спросили отельера",
+    "unknown": "нет данных",
+    "stale": "устарело",
+}
 
 
 def stats_text(stats: dict) -> str:
@@ -166,19 +199,26 @@ def _run_answer(session: Session, run: AgentRun, logger: RunLogger) -> str:
         logger.step("Отельер", "result", f"Ответ: «{text}»", char_key=(q.char_keys or [None])[0])
     res = answer_question(session, q, text, answered_by=who, logger=logger)
     specs = all_specs(session, enabled_only=False)
-    return "; ".join(f"{specs[k]['title'] if k in specs else k}: {fields_text(specs[k], v['fields']) if k in specs and v['fields'] else 'не разобрано'}"
-                     for k, v in res.items())
+    return "; ".join(
+        f"{specs[k]['title'] if k in specs else k}: {fields_text(specs[k], v['fields']) if k in specs and v['fields'] else 'не разобрано'}"
+        for k, v in res.items()
+    )
 
 
 def _run_actualize(session: Session, run: AgentRun, logger: RunLogger) -> str:
     now = utcnow()
-    stale = list(session.scalars(select(ResolvedValue).where(ResolvedValue.valid_until.is_not(None),
-                                                             ResolvedValue.valid_until < now)))
+    stale = list(
+        session.scalars(select(ResolvedValue).where(ResolvedValue.valid_until.is_not(None), ResolvedValue.valid_until < now))
+    )
     by_hotel: dict[str, list[str]] = {}
     for rv in stale:
         by_hotel.setdefault(rv.hotel_id, []).append(rv.char_key)
-    logger.step("Арбитр", "plan", f"Найдено устаревших значений: {len(stale)} у {len(by_hotel)} {plural(len(by_hotel), 'отеля', 'отелей', 'отелей')}",
-                payload={"stale": len(stale)})
+    logger.step(
+        "Арбитр",
+        "plan",
+        f"Найдено устаревших значений: {len(stale)} у {len(by_hotel)} {plural(len(by_hotel), 'отеля', 'отелей', 'отелей')}",
+        payload={"stale": len(stale)},
+    )
     limit = int(run.params.get("limit", 50))
     n = 0
     for hotel_id, keys in list(by_hotel.items())[:limit]:
@@ -220,17 +260,23 @@ def _run_scenario(session: Session, run: AgentRun, logger: RunLogger) -> str:
         if d <= radius:
             hotels.append((d, h))
     hotels.sort(key=lambda t: t[0])
-    logger.step("Оркестратор", "plan", f"Изменение среды: {what}. "
-                f"Пересчитываю виды и шум для {len(hotels)} {plural(len(hotels), 'отеля', 'отелей', 'отелей')} в радиусе {radius:.0f} м",
-                payload={"hotels": [h.id for _, h in hotels]})
+    logger.step(
+        "Оркестратор",
+        "plan",
+        f"Изменение среды: {what}. "
+        f"Пересчитываю виды и шум для {len(hotels)} {plural(len(hotels), 'отеля', 'отелей', 'отелей')} в радиусе {radius:.0f} м",
+        payload={"hotels": [h.id for _, h in hotels]},
+    )
     changed = 0
     for d, h in hotels:
         _check_stop()
-        before = {k: (session.get(ResolvedValue, (h.id, k)).summary if session.get(ResolvedValue, (h.id, k)) else "")
-                  for k in VIEW_KEYS}
+        before = {
+            k: (session.get(ResolvedValue, (h.id, k)).summary if session.get(ResolvedValue, (h.id, k)) else "") for k in VIEW_KEYS
+        }
         quiet = RunLogger(session, run, store=False)
-        collect_hotel(session, h, VIEW_KEYS, quiet, reason="change:reset" if reset_ids else "change:building",
-                      allow_questions=False)
+        collect_hotel(
+            session, h, VIEW_KEYS, quiet, reason="change:reset" if reset_ids else "change:building", allow_questions=False
+        )
         diffs = []
         for k in VIEW_KEYS:
             rv = session.get(ResolvedValue, (h.id, k))
@@ -239,14 +285,23 @@ def _run_scenario(session: Session, run: AgentRun, logger: RunLogger) -> str:
         if diffs:
             changed += 1
             titles = [(get_spec(session, k) or {}).get("title", k) for k in diffs]
-            logger.step("Арбитр", "result", f"{quote(h.label)} ({d:.0f} м): изменилось — {', '.join(t[:1].lower() + t[1:] for t in titles)}",
-                        payload={"hotel_id": h.id, "keys": diffs})
+            logger.step(
+                "Арбитр",
+                "result",
+                f"{quote(h.label)} ({d:.0f} м): изменилось — {', '.join(t[:1].lower() + t[1:] for t in titles)}",
+                payload={"hotel_id": h.id, "keys": diffs},
+            )
         session.commit()
     return f"затронуто отелей: {len(hotels)}, изменилось знание у {changed}"
 
 
-HANDLERS = {"collect": _run_collect, "collect_all": _run_collect_all, "answer": _run_answer,
-            "actualize": _run_actualize, "scenario": _run_scenario}
+HANDLERS = {
+    "collect": _run_collect,
+    "collect_all": _run_collect_all,
+    "answer": _run_answer,
+    "actualize": _run_actualize,
+    "scenario": _run_scenario,
+}
 
 
 def execute_run(run_id: int) -> None:
@@ -318,12 +373,21 @@ class Worker(threading.Thread):
             if run is None and settings.hotelier_autoreply:
                 q = session.scalars(select(Question).where(Question.status == "open").order_by(Question.id).limit(1)).first()
                 if q is not None and (utcnow() - q.created_at).total_seconds() > 20:
-                    r = create_run(session, "answer", hotel_id=q.hotel_id, char_keys=q.char_keys, trigger="autoreply",
-                                   params={"question_id": q.id})
+                    r = create_run(
+                        session,
+                        "answer",
+                        hotel_id=q.hotel_id,
+                        char_keys=q.char_keys,
+                        trigger="autoreply",
+                        params={"question_id": q.id},
+                    )
                     session.commit()
                     run_id = r.id
-            if run_id is None and settings.actualize_interval_min > 0 and \
-                    time.time() - self.last_actualize > settings.actualize_interval_min * 60:
+            if (
+                run_id is None
+                and settings.actualize_interval_min > 0
+                and time.time() - self.last_actualize > settings.actualize_interval_min * 60
+            ):
                 self.last_actualize = time.time()
                 r = create_run(session, "actualize", trigger="schedule", params={"limit": 20})
                 session.commit()

@@ -36,8 +36,13 @@ async def lifespan(app: FastAPI):
         reapply_overrides(session)
     if settings.worker_enabled:
         start_worker()
-    log.info("Готово за %.1f с (данные: %s, LLM: %s). Откройте http://localhost:%s", time.perf_counter() - t0, mode,
-             "включена" if settings.llm_enabled else "нет ключа — работают правила", settings.app_port)
+    log.info(
+        "Готово за %.1f с (данные: %s, LLM: %s). Откройте http://localhost:%s",
+        time.perf_counter() - t0,
+        mode,
+        "включена" if settings.llm_enabled else "нет ключа — работают правила",
+        settings.app_port,
+    )
     yield
 
 
@@ -71,6 +76,7 @@ if _static is not None:
             return FileResponse(target)
         return FileResponse(_static / "index.html")
 else:
+
     @app.get("/", include_in_schema=False)
     def root():
         return {"status": "ok", "note": "фронтенд не собран; API: /docs"}

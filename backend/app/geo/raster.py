@@ -60,7 +60,7 @@ class Grid:
         v01 = a[r0o, c0o + 1].astype(float)
         v10 = a[r0o + 1, c0o].astype(float)
         v11 = a[r0o + 1, c0o + 1].astype(float)
-        out[ok] = (v00 * (1 - tx) * (1 - ty) + v01 * tx * (1 - ty) + v10 * (1 - tx) * ty + v11 * tx * ty)
+        out[ok] = v00 * (1 - tx) * (1 - ty) + v01 * tx * (1 - ty) + v10 * (1 - tx) * ty + v11 * tx * ty
         return out
 
     def cell_of(self, x: float, y: float) -> tuple[int, int]:
@@ -73,8 +73,9 @@ class Grid:
         return np.meshgrid(cols, rows)
 
 
-def rasterize_polygon(grid: Grid, polygon, value, mode: str = "max", ids: np.ndarray | None = None,
-                      id_value: int | None = None) -> int:
+def rasterize_polygon(
+    grid: Grid, polygon, value, mode: str = "max", ids: np.ndarray | None = None, id_value: int | None = None
+) -> int:
     """Прожигает полигон shapely (в метрах) в растр. Возвращает число затронутых ячеек."""
     import shapely
 

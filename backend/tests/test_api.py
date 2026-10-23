@@ -67,9 +67,15 @@ def test_hotelier_flow(client):
     auth = {"Authorization": f"Bearer {token}"}
     qs = client.get("/api/questions?status=open").json()["items"]
     q = next(x for x in qs if "pets_policy" in x["char_keys"])
-    prev = client.post(f"/api/hotelier/questions/{q['id']}/answer", json={"text": "Можно с собаками до 10 кг, 500 руб в сутки", "preview": True}, headers=auth).json()
+    prev = client.post(
+        f"/api/hotelier/questions/{q['id']}/answer",
+        json={"text": "Можно с собаками до 10 кг, 500 руб в сутки", "preview": True},
+        headers=auth,
+    ).json()
     assert prev["preview"]["pets_policy"]["fields"]["max_weight_kg"] == 10
-    res = client.post(f"/api/hotelier/questions/{q['id']}/answer", json={"text": "Можно с собаками до 10 кг, 500 руб в сутки"}, headers=auth).json()
+    res = client.post(
+        f"/api/hotelier/questions/{q['id']}/answer", json={"text": "Можно с собаками до 10 кг, 500 руб в сутки"}, headers=auth
+    ).json()
     assert res["question"]["status"] == "answered"
     card = client.get(f"/api/hotels/{q['hotel_id']}").json()
     pets = next(i for g in card["groups"] for i in g["items"] if i["key"] == "pets_policy")
@@ -105,17 +111,27 @@ def test_conflict_clarification_cycle(client):
     q, floor = target
     # отельер приукрашивает → противоречие и уточняющий вопрос
     client.post(f"/api/hotelier/questions/{q['id']}/answer", json={"text": "Море видно из всех номеров!"}, headers=auth)
-    conflicts = [c for c in client.get("/api/conflicts?status=open&limit=500").json()["items"]
-                 if c["hotel_id"] == q["hotel_id"] and c["char_key"] == "sea_view"]
+    conflicts = [
+        c
+        for c in client.get("/api/conflicts?status=open&limit=500").json()["items"]
+        if c["hotel_id"] == q["hotel_id"] and c["char_key"] == "sea_view"
+    ]
     assert conflicts
-    clar = [x for x in client.get(f"/api/questions?status=open&hotel_id={q['hotel_id']}").json()["items"]
-            if x["reason"] == "conflict" and "sea_view" in x["char_keys"]]
+    clar = [
+        x
+        for x in client.get(f"/api/questions?status=open&hotel_id={q['hotel_id']}").json()["items"]
+        if x["reason"] == "conflict" and "sea_view" in x["char_keys"]
+    ]
     assert clar, "арбитр должен задать уточняющий вопрос"
     # отельер уточняет — противоречие снимается
-    client.post(f"/api/hotelier/questions/{clar[0]['id']}/answer", json={"text": f"Да, море видно начиная с {floor} этажа"},
-                headers=auth)
-    still = [c for c in client.get("/api/conflicts?status=open&limit=500").json()["items"]
-             if c["hotel_id"] == q["hotel_id"] and c["char_key"] == "sea_view"]
+    client.post(
+        f"/api/hotelier/questions/{clar[0]['id']}/answer", json={"text": f"Да, море видно начиная с {floor} этажа"}, headers=auth
+    )
+    still = [
+        c
+        for c in client.get("/api/conflicts?status=open&limit=500").json()["items"]
+        if c["hotel_id"] == q["hotel_id"] and c["char_key"] == "sea_view"
+    ]
     assert not still
 
 
@@ -133,8 +149,12 @@ def test_runtime_texts_are_clean(client):
             bad += [(q, res["hotel"]["name"], t, anomalies(t)) for t in texts if anomalies(t)]
     ids = [h["id"] for h in client.get("/api/hotels").json()["items"][:6]]
     cmp = client.get("/api/compare", params={"ids": ",".join(ids)}).json()
-    bad += [("compare", row["title"], c["summary"], anomalies(c["summary"])) for row in cmp["rows"] for c in row["cells"]
-            if anomalies(c["summary"])]
+    bad += [
+        ("compare", row["title"], c["summary"], anomalies(c["summary"]))
+        for row in cmp["rows"]
+        for c in row["cells"]
+        if anomalies(c["summary"])
+    ]
     # доказательства фактов и разбор ответов отельеров — по-русски, без служебных ключей и десятичных точек
     for hid in ids[:3]:
         for f in client.get(f"/api/hotels/{hid}/facts").json()["items"]:
@@ -173,8 +193,11 @@ def test_booking_wish(client):
     assert top["room"]["facade_text"].split()[0][:5] in w["text"]
     assert "закат" in w["text"] and w["method"] == "rules" and not anomalies(w["text"])
     q2 = "выспаться после ночного перелёта: плотные шторы и тишина"
-    unknown = next(r for r in client.post("/api/search", json={"query": q2, "limit": 400}).json()["results"]
-                   if any(n["key"] == "blackout_curtains" and n["status"] == "unknown" for n in r["needs"]))
+    unknown = next(
+        r
+        for r in client.post("/api/search", json={"query": q2, "limit": 400}).json()["results"]
+        if any(n["key"] == "blackout_curtains" and n["status"] == "unknown" for n in r["needs"])
+    )
     w2 = client.get(f"/api/hotels/{unknown['hotel']['id']}/wish", params={"q": q2}).json()
     assert any("шторы" in x for x in w2["questions"]) and "?" in w2["text"]
 
@@ -226,8 +249,10 @@ def test_tour_and_demo_reset(client):
     az = math.radians(f["normal_az"])
     lat = f["lat"] + 55 * math.cos(az) / 111132
     lon = f["lon"] + 55 * math.sin(az) / (111320 * math.cos(math.radians(f["lat"])))
-    client.post("/api/scenarios/building", json={"lat": lat, "lon": lon, "height_m": 50, "width_m": 60, "length_m": 24,
-                                                 "angle_deg": -f["normal_az"]})
+    client.post(
+        "/api/scenarios/building",
+        json={"lat": lat, "lon": lon, "height_m": 50, "width_m": 60, "length_m": 24, "angle_deg": -f["normal_az"]},
+    )
     assert client.get(f"/api/hotels/{sh}/view", params=window).json()["ray_counts"]["sea"] < rays0["sea"]
     q = client.get("/api/questions", params={"status": "open", "limit": 1}).json()["items"][0]
     token = client.post("/api/auth/login", json={"login": "hotelier", "password": "hotelier123"}).json()["token"]

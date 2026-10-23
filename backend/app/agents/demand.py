@@ -25,7 +25,7 @@ from ..models import Hotel, Question, ResolvedValue, SearchLog
 from . import concierge
 
 ANSWER_CONF = 0.8  # уверенность факта из ответа отельера (см. interviewer: 0,8 × (0,6 + 0,4 × качество разбора))
-TOP = 30           # позиции дальше топ-30 для гостя равноценны
+TOP = 30  # позиции дальше топ-30 для гостя равноценны
 TTL_S = 120
 
 _lock = threading.Lock()
@@ -38,9 +38,9 @@ class DemandQuery:
     source: str  # search | demo
     weight: float = 1.0
     keys: list[str] = field(default_factory=list)
-    scores: dict[str, float] = field(default_factory=dict)       # отель → балл (без округления)
+    scores: dict[str, float] = field(default_factory=dict)  # отель → балл (без округления)
     parts: dict[str, dict[str, tuple]] = field(default_factory=dict)  # отель → ключ → (w, em, mult, total_w)
-    sorted_scores: list[float] = field(default_factory=list)      # по возрастанию, для поиска места
+    sorted_scores: list[float] = field(default_factory=list)  # по возрастанию, для поиска места
 
 
 def _demo_texts() -> list[str]:
@@ -88,8 +88,11 @@ def _build(session: Session) -> list[DemandQuery]:
 
 def model(session: Session) -> list[DemandQuery]:
     """Спрос с оценками всех отелей; пересчитывается, когда меняются знания или журнал поисков."""
-    key = (session.scalar(select(func.count(SearchLog.id))), session.scalar(select(func.max(ResolvedValue.updated_at))),
-           session.scalar(select(func.count(Hotel.id))))
+    key = (
+        session.scalar(select(func.count(SearchLog.id))),
+        session.scalar(select(func.max(ResolvedValue.updated_at))),
+        session.scalar(select(func.count(Hotel.id))),
+    )
     with _lock:
         if _cache["key"] == key and time.time() - _cache["at"] < TTL_S:
             return _cache["model"]
@@ -135,8 +138,10 @@ def explain(u: dict) -> str:
     s = f"Ответ влияет на {u['queries']} {_queries_word(u['queries'])} гостей"
     ex = u.get("example")
     if ex:
-        s += (f", например «{ex['query']}»{' (демо-спрос)' if ex['demo'] else ''}. При ответе «да» отель поднимется "
-              f"с {ex['before']}-го на {ex['after']}-е место")
+        s += (
+            f", например «{ex['query']}»{' (демо-спрос)' if ex['demo'] else ''}. При ответе «да» отель поднимется "
+            f"с {ex['before']}-го на {ex['after']}-е место"
+        )
     else:
         s += ", но место в топ-30 от ответа не изменится"
     return s
@@ -167,6 +172,11 @@ def coverage(session: Session) -> dict:
         return {"questions": len(rows), "top_share": None}
     top = rows[: max(1, len(rows) // 5)]
     demand = model(session)
-    return {"questions": len(rows), "top_n": len(top), "top_share": round(sum(u["score"] for _, u in top) / total, 3),
-            "useful": sum(1 for _, u in rows if u["score"] > 0), "demand_queries": len(demand),
-            "demo_queries": sum(1 for d in demand if d.source == "demo")}
+    return {
+        "questions": len(rows),
+        "top_n": len(top),
+        "top_share": round(sum(u["score"] for _, u in top) / total, 3),
+        "useful": sum(1 for _, u in rows if u["score"] > 0),
+        "demand_queries": len(demand),
+        "demo_queries": sum(1 for d in demand if d.source == "demo"),
+    }

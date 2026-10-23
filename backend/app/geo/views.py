@@ -34,8 +34,7 @@ MOUNTAIN_ELEV = 450.0
 OWN_BUILDING_SKIP = 20.0  # м: игнорируем собственное здание у самого окна
 
 CLS_LAND, CLS_SEA, CLS_BUILDING, CLS_TREES, CLS_MOUNTAIN = 0, 1, 2, 3, 4
-CLS_NAMES = {CLS_LAND: "рельеф", CLS_SEA: "море", CLS_BUILDING: "здания", CLS_TREES: "деревья",
-             CLS_MOUNTAIN: "горы"}
+CLS_NAMES = {CLS_LAND: "рельеф", CLS_SEA: "море", CLS_BUILDING: "здания", CLS_TREES: "деревья", CLS_MOUNTAIN: "горы"}
 
 
 @dataclass
@@ -48,8 +47,13 @@ class Facade:
     length: float
 
     def as_dict(self) -> dict:
-        return {"key": self.key, "normal_az": round(self.normal_az, 1), "length_m": round(self.length, 1),
-                "x": round(self.x, 1), "y": round(self.y, 1)}
+        return {
+            "key": self.key,
+            "normal_az": round(self.normal_az, 1),
+            "length_m": round(self.length, 1),
+            "x": round(self.x, 1),
+            "y": round(self.y, 1),
+        }
 
 
 def building_facades(poly: Polygon, min_len: float = 4.0, offset: float = 1.5) -> list[Facade]:
@@ -71,8 +75,16 @@ def building_facades(poly: Polygon, min_len: float = 4.0, offset: float = 1.5) -
         out = []
         for idx in (0, 2, 4, 6):
             az = idx * 45.0
-            out.append(Facade(COMPASS_8[idx], idx, az, c.x + (r + offset) * math.sin(math.radians(az)),
-                              c.y + (r + offset) * math.cos(math.radians(az)), 2 * r))
+            out.append(
+                Facade(
+                    COMPASS_8[idx],
+                    idx,
+                    az,
+                    c.x + (r + offset) * math.sin(math.radians(az)),
+                    c.y + (r + offset) * math.cos(math.radians(az)),
+                    2 * r,
+                )
+            )
         return out
     out = []
     for idx, edges in groups.items():
@@ -158,8 +170,7 @@ class ViewEngine:
         return z, cls
 
     # ------------------------------------------------------------------
-    def analyse_point(self, x0: float, y0: float, ground: float, floors: list[int], azimuths: np.ndarray,
-                      own_id: int | None):
+    def analyse_point(self, x0: float, y0: float, ground: float, floors: list[int], azimuths: np.ndarray, own_id: int | None):
         """Для каждого этажа и азимута: угол горизонта, что его образует, видно ли море/горы, дистанция преграды."""
         z, cls = self.profiles(x0, y0, azimuths, own_id)
         d = self.d[None, :].astype(np.float32)
@@ -175,8 +186,9 @@ class ViewEngine:
             sky_cls = cls[np.arange(t.shape[0]), hz_idx]
             sky_d = self.d[hz_idx]
             sea_vis = np.any(visible & (cls == CLS_SEA), axis=1)
-            sea_d = np.where(np.any(visible & (cls == CLS_SEA), axis=1),
-                             self.d[np.argmax(visible & (cls == CLS_SEA), axis=1)], np.nan)
+            sea_d = np.where(
+                np.any(visible & (cls == CLS_SEA), axis=1), self.d[np.argmax(visible & (cls == CLS_SEA), axis=1)], np.nan
+            )
             mtn_vis = np.any(visible & (cls == CLS_MOUNTAIN) & (d >= 2000), axis=1)
             tan2 = math.tan(math.radians(2.0))
             blocked = t > tan2
@@ -184,15 +196,26 @@ class ViewEngine:
             b_idx = np.argmax(blocked, axis=1)
             block_d = np.where(has_block, self.d[b_idx], np.nan)
             block_cls = np.where(has_block, cls[np.arange(t.shape[0]), b_idx], 255)
-            res.append({
-                "floor": f, "eye_z": zf, "horizon": horizon, "sky_cls": sky_cls, "sky_d": sky_d, "sea_vis": sea_vis,
-                "sea_d": sea_d, "mtn_vis": mtn_vis, "block_d": block_d, "block_cls": block_cls,
-            })
+            res.append(
+                {
+                    "floor": f,
+                    "eye_z": zf,
+                    "horizon": horizon,
+                    "sky_cls": sky_cls,
+                    "sky_d": sky_d,
+                    "sea_vis": sea_vis,
+                    "sea_d": sea_d,
+                    "mtn_vis": mtn_vis,
+                    "block_d": block_d,
+                    "block_cls": block_cls,
+                }
+            )
         return res
 
     # ------------------------------------------------------------------
-    def line_of_sight(self, x0: float, y0: float, z_eye: float, xt: float, yt: float, zt: float,
-                      own_id: int | None, target_radius: float = 30.0) -> tuple[bool, float, str]:
+    def line_of_sight(
+        self, x0: float, y0: float, z_eye: float, xt: float, yt: float, zt: float, own_id: int | None, target_radius: float = 30.0
+    ) -> tuple[bool, float, str]:
         """Прямая видимость точки-цели. Возвращает (видно, запас по углу в градусах, что мешает)."""
         dist = math.hypot(xt - x0, yt - y0)
         if dist < 5:

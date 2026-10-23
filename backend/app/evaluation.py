@@ -73,7 +73,8 @@ def eval_answers(name: str = "hotelier_answers.yaml") -> dict:
             if f not in r["expect"] and f not in {"reduction_db"}:
                 pass
     return {
-        "answers": len(rows), "fields": total,
+        "answers": len(rows),
+        "fields": total,
         "accuracy": round(correct / total, 3) if total else None,
         "precision": round(correct / extracted, 3) if extracted else None,
         "recall": round(extracted / total, 3) if total else None,
@@ -99,9 +100,14 @@ def eval_queries(name: str = "queries.yaml") -> dict:
     p = tp / (tp + fp) if tp + fp else 0
 
     rc = tp / (tp + fn) if tp + fn else 0
-    return {"queries": len(rows), "precision": round(p, 3), "recall": round(rc, 3),
-            "f1": round(2 * p * rc / (p + rc), 3) if p + rc else 0, "exact_match": round(exact / len(rows), 3) if rows else None,
-            "errors": errors[:12]}
+    return {
+        "queries": len(rows),
+        "precision": round(p, 3),
+        "recall": round(rc, 3),
+        "f1": round(2 * p * rc / (p + rc), 3) if p + rc else 0,
+        "exact_match": round(exact / len(rows), 3) if rows else None,
+        "errors": errors[:12],
+    }
 
 
 def eval_sun() -> dict:
@@ -119,12 +125,23 @@ def eval_sun() -> dict:
         local = t + dt.timedelta(hours=3)
         rh, rm = map(int, ref["sunset"].split(":"))
         got_min = local.hour * 60 + local.minute + local.second / 60
-        rows.append({"date": ref["date"], "sunset": local.strftime("%H:%M"), "ref_sunset": ref["sunset"],
-                     "time_error_min": round(abs(got_min - (rh * 60 + rm)), 1), "azimuth": round(az, 1),
-                     "ref_azimuth": ref["azimuth"], "azimuth_error_deg": round(abs(az - ref["azimuth"]), 2)})
-    return {"reference": ref_doc.get("source"), "checks": rows,
-            "max_time_error_min": max(r["time_error_min"] for r in rows),
-            "max_azimuth_error_deg": max(r["azimuth_error_deg"] for r in rows)}
+        rows.append(
+            {
+                "date": ref["date"],
+                "sunset": local.strftime("%H:%M"),
+                "ref_sunset": ref["sunset"],
+                "time_error_min": round(abs(got_min - (rh * 60 + rm)), 1),
+                "azimuth": round(az, 1),
+                "ref_azimuth": ref["azimuth"],
+                "azimuth_error_deg": round(abs(az - ref["azimuth"]), 2),
+            }
+        )
+    return {
+        "reference": ref_doc.get("source"),
+        "checks": rows,
+        "max_time_error_min": max(r["time_error_min"] for r in rows),
+        "max_azimuth_error_deg": max(r["azimuth_error_deg"] for r in rows),
+    }
 
 
 def eval_geo_gold(session: Session) -> dict:
@@ -142,8 +159,13 @@ def eval_geo_gold(session: Session) -> dict:
             correct += bool(ok)
             if not ok:
                 errors.append({"hotel_id": r["hotel_id"], "char_key": r["char_key"], "field": f, "expected": exp, "got": g})
-    return {"labels": len(rows), "fields": total, "accuracy": round(correct / total, 3) if total else None,
-            "errors": errors[:12], "note": "разметка заполняется командой по фото и панорамам" if not rows else ""}
+    return {
+        "labels": len(rows),
+        "fields": total,
+        "accuracy": round(correct / total, 3) if total else None,
+        "errors": errors[:12],
+        "note": "разметка заполняется командой по фото и панорамам" if not rows else "",
+    }
 
 
 def eval_ranking(session: Session, name: str = "ranking_pairs.yaml") -> dict:
@@ -169,8 +191,15 @@ def eval_ranking(session: Session, name: str = "ranking_pairs.yaml") -> dict:
         good = pa is not None and pb is not None and pa < pb
         ok += good
         if not good:
-            errors.append({"query": q, "above": names.get(r["above"], r["above"]), "below": names.get(r["below"], r["below"]),
-                           "pos_above": None if pa is None else pa + 1, "pos_below": None if pb is None else pb + 1})
+            errors.append(
+                {
+                    "query": q,
+                    "above": names.get(r["above"], r["above"]),
+                    "below": names.get(r["below"], r["below"]),
+                    "pos_above": None if pa is None else pa + 1,
+                    "pos_below": None if pb is None else pb + 1,
+                }
+            )
     return {"pairs": len(rows), "agreement": round(ok / len(rows), 3), "errors": errors}
 
 
@@ -188,8 +217,20 @@ def compute_metrics(session: Session, force: bool = False) -> dict:
     n_hotels = session.scalar(select(func.count(Hotel.id))) or 1
     now = utcnow()
     rvs = list(session.scalars(select(ResolvedValue)))
-    per: dict[str, dict] = {k: {"key": k, "title": s["title"], "group": s["group"], "known": 0, "conf_sum": 0.0,
-                                "conflict": 0, "stale": 0, "asked": 0, "sources": {}} for k, s in specs.items()}
+    per: dict[str, dict] = {
+        k: {
+            "key": k,
+            "title": s["title"],
+            "group": s["group"],
+            "known": 0,
+            "conf_sum": 0.0,
+            "conflict": 0,
+            "stale": 0,
+            "asked": 0,
+            "sources": {},
+        }
+        for k, s in specs.items()
+    }
     for rv in rvs:
         p = per.get(rv.char_key)
         if p is None:
@@ -215,29 +256,37 @@ def compute_metrics(session: Session, force: bool = False) -> dict:
                 per[k]["asked"] += 1
     per_list = []
     for p in per.values():
-        per_list.append({**{k: v for k, v in p.items() if k != "conf_sum"},
-                         "coverage": round(p["known"] / n_hotels, 3),
-                         "avg_confidence": round(p["conf_sum"] / p["known"], 3) if p["known"] else 0.0,
-                         "question_share": round(p["asked"] / n_hotels, 3)})
+        per_list.append(
+            {
+                **{k: v for k, v in p.items() if k != "conf_sum"},
+                "coverage": round(p["known"] / n_hotels, 3),
+                "avg_confidence": round(p["conf_sum"] / p["known"], 3) if p["known"] else 0.0,
+                "question_share": round(p["asked"] / n_hotels, 3),
+            }
+        )
     pairs = n_hotels * len(specs)
     known_pairs = sum(p["known"] for p in per.values())
     open_data = sum(1 for rv in rvs if rv.value and any(s in {"geo", "osm", "climate", "osm_estimate"} for s in rv.sources or []))
     hotelier_only = sum(1 for rv in rvs if rv.value and rv.sources and all(s.startswith("hotelier") for s in rv.sources))
     c_rows = list(session.scalars(select(Conflict)))
     conflicts = {
-        "detected": len(c_rows), "open": sum(1 for c in c_rows if c.status == "open"),
+        "detected": len(c_rows),
+        "open": sum(1 for c in c_rows if c.status == "open"),
         "resolved_auto": sum(1 for c in c_rows if c.status == "resolved" and c.resolved_by == "arbiter"),
         "resolved_moderator": sum(1 for c in c_rows if c.resolved_by == "moderator"),
         "with_question": sum(1 for c in c_rows if c.question_id),
     }
-    facts_by_source = dict(session.execute(select(Fact.source, func.count()).where(Fact.status == "active")
-                                           .group_by(Fact.source)).all())
+    facts_by_source = dict(
+        session.execute(select(Fact.source, func.count()).where(Fact.status == "active").group_by(Fact.source)).all()
+    )
     region_stats = get_region().meta.get("stats", {})
     data = {
         "generated_at": now.isoformat() + "Z",
-        "hotels": n_hotels, "characteristics": len(specs),
+        "hotels": n_hotels,
+        "characteristics": len(specs),
         "coverage": round(known_pairs / pairs, 3) if pairs else 0,
-        "coverage_open_data_pairs": open_data, "hotelier_only_pairs": hotelier_only,
+        "coverage_open_data_pairs": open_data,
+        "hotelier_only_pairs": hotelier_only,
         "question_share": round(len(q_pairs) / pairs, 3) if pairs else 0,
         "questions": {"total": q_total, "answered": q_answered, "open": q_total - q_answered},
         "conflicts": conflicts,
@@ -245,15 +294,25 @@ def compute_metrics(session: Session, force: bool = False) -> dict:
         "facts_by_source": facts_by_source,
         "per_characteristic": sorted(per_list, key=lambda x: (x["group"], -x["coverage"])),
         "searches": session.scalar(select(func.count(SearchLog.id))) or 0,
-        "eval": {"answers": eval_answers(), "queries": eval_queries(),
-                 "answers_dev": eval_answers("hotelier_answers_dev.yaml"), "queries_dev": eval_queries("queries_dev.yaml"),
-                 "answers_holdout": eval_answers("hotelier_answers_holdout.yaml"),
-                 "queries_holdout": eval_queries("queries_holdout.yaml"), "sun": eval_sun(),
-                 "geo_gold": eval_geo_gold(session), "ranking": eval_ranking(session),
-                 "demand": _demand_coverage(session),
-                 "levels_imputation": region_stats.get("levels_imputation")},
-        "data_sources": {"buildings": region_stats.get("buildings"), "height_sources": region_stats.get("height_sources"),
-                         "pois": region_stats.get("pois"), "roads": region_stats.get("roads")},
+        "eval": {
+            "answers": eval_answers(),
+            "queries": eval_queries(),
+            "answers_dev": eval_answers("hotelier_answers_dev.yaml"),
+            "queries_dev": eval_queries("queries_dev.yaml"),
+            "answers_holdout": eval_answers("hotelier_answers_holdout.yaml"),
+            "queries_holdout": eval_queries("queries_holdout.yaml"),
+            "sun": eval_sun(),
+            "geo_gold": eval_geo_gold(session),
+            "ranking": eval_ranking(session),
+            "demand": _demand_coverage(session),
+            "levels_imputation": region_stats.get("levels_imputation"),
+        },
+        "data_sources": {
+            "buildings": region_stats.get("buildings"),
+            "height_sources": region_stats.get("height_sources"),
+            "pois": region_stats.get("pois"),
+            "roads": region_stats.get("roads"),
+        },
     }
     with _lock:
         _cache.update({"at": time.time(), "data": data})
