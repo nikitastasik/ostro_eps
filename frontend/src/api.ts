@@ -241,7 +241,7 @@ export interface TourData {
   floor_hotel: { id: string; name: string; facade: string | null; min_floor: number | null } | null;
   evidence_hotel: { id: string; name: string; multi: boolean } | null;
   conflict_hotel: { id: string; name: string } | null;
-  scenario_hotel: { id: string; name: string } | null;
+  scenario_hotel: { id: string; name: string; facade?: string | null; floor?: number | null; built?: boolean } | null;
   characteristic: string;
   hotels: number;
 }
