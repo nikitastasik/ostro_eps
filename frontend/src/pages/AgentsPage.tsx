@@ -3,7 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { api, Conflict, HotelListItem, Question, Run } from "../api";
 import MapView from "../MapView";
 import RunLog, { RunDrawer } from "../RunLog";
-import { ErrorBox, fmtDate, Icon, REASON_RU, RUN_KIND_RU, SOURCE_RU, Spinner, TRIGGER_RU, useAsync, useToast } from "../ui";
+import { ErrorBox, fmtDate, Icon, num, plural, REASON_RU, RUN_KIND_RU, SOURCE_RU, Spinner, TRIGGER_RU, useAsync, useToast } from "../ui";
 
 
 function useInterval(fn: () => void, ms: number) {
@@ -30,6 +30,7 @@ export default function AgentsPage() {
     return () => clearTimeout(t);
   }, []);
   const [scHeight, setScHeight] = useState(50);
+  const [built, setBuilt] = useState<{ id: string; name: string; facade: string; floor: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const toast = useToast();
 
@@ -52,8 +53,10 @@ export default function AgentsPage() {
       const az = (f.normal_az * Math.PI) / 180;
       const lat = f.lat + (dist * Math.cos(az)) / 111132;
       const lon = f.lon + (dist * Math.sin(az)) / (111320 * Math.cos((f.lat * Math.PI) / 180));
+      const floor = (sea?.value as any)?.min_floor || 1;
       const r = await api.scenarioBuilding({ lat, lon, height_m: scHeight, width_m: 60, length_m: 24, angle_deg: -f.normal_az,
-        label: `Новый ЖК ${Math.round(scHeight / 3)} эт. перед „${card.name}“` });
+        label: `Новый ЖК ${Math.round(scHeight / 3)} эт. перед „${card.name}“`, hotel_id: scHotel, facade: f.key, floor });
+      setBuilt({ id: scHotel, name: card.name, facade: f.key, floor });
       setDrawer({ id: r.run.id, title: "Агенты пересчитывают виды после стройки" });
       ov.reload();
     } catch (e) { toast.show(String(e)); }
@@ -68,10 +71,10 @@ export default function AgentsPage() {
       <ErrorBox error={ov.error} />
       {o && (
         <div className="grid four">
-          <div className="card kpi"><div className="v">{(o.runs.done || 0) + (o.runs.error || 0)}</div><div className="l">запусков выполнено{o.runs.running ? ` · ${o.runs.running} в работе` : ""}{o.runs.queued ? ` · ${o.runs.queued} в очереди` : ""}</div></div>
-          <div className="card kpi"><div className="v">{o.questions.open || 0}</div><div className="l">вопросов ждут отельеров · отвечено {o.questions.answered || 0}</div></div>
-          <div className="card kpi"><div className="v">{o.conflicts.open || 0}</div><div className="l">противоречий открыто · разобрано {o.conflicts.resolved || 0}</div></div>
-          <div className="card kpi"><div className="v">{o.stale}</div><div className="l">значений устарело · {o.stale_soon} истекают в 30 дней</div></div>
+          <div className="card kpi"><div className="v">{num((o.runs.done || 0) + (o.runs.error || 0))}</div><div className="l">{plural((o.runs.done || 0) + (o.runs.error || 0), "запуск выполнен", "запуска выполнено", "запусков выполнено")}{o.runs.running ? ` · ${o.runs.running} в работе` : ""}{o.runs.queued ? ` · ${o.runs.queued} в очереди` : ""}</div></div>
+          <div className="card kpi"><div className="v">{o.questions.open || 0}</div><div className="l">{plural(o.questions.open || 0, "вопрос ждёт", "вопроса ждут", "вопросов ждут")} отельеров · отвечено {num(o.questions.answered || 0)}</div></div>
+          <div className="card kpi"><div className="v">{o.conflicts.open || 0}</div><div className="l">{plural(o.conflicts.open || 0, "противоречие открыто", "противоречия открыто", "противоречий открыто")} · разобрано {o.conflicts.resolved || 0}</div></div>
+          <div className="card kpi"><div className="v">{o.stale}</div><div className="l">{plural(o.stale, "значение устарело", "значения устарели", "значений устарело")} · у {o.stale_soon} срок годности истечёт в ближайшие 30 дней</div></div>
         </div>
       )}
 
@@ -146,8 +149,13 @@ export default function AgentsPage() {
               {[20, 35, 50, 70].map((x) => <option key={x} value={x}>{x} м (~{Math.round(x / 3)} эт.)</option>)}
             </select>
             <button className="btn primary" disabled={busy || !scHotel} onClick={placeBuilding}>{busy ? <Spinner /> : <Icon name="crane" />} Построить</button>
-            <button className="btn" onClick={async () => { const r = await api.scenarioReset(); if (r.run) setDrawer({ id: r.run.id, title: "Откат сценариев: пересчёт видов" }); refresh(); }}>Снести всё построенное</button>
+            <button className="btn" onClick={async () => { const r = await api.scenarioReset(); setBuilt(null); if (r.run) setDrawer({ id: r.run.id, title: "Откат сценариев: пересчёт видов" }); refresh(); }}>Снести всё построенное</button>
           </div>
+          {built && (
+            <Link className="btn small mt-s built-link" to={`/hotel/${encodeURIComponent(built.id)}?facade=${encodeURIComponent(built.facade)}&floor=${built.floor}#view`}>
+              <Icon name="window" size={14} /> Лучи «{built.name}»: окна стороны {built.facade}, {built.floor}-й этаж
+            </Link>
+          )}
           {o?.overrides?.length > 0 && (
             <div className="mt">
               <MapView className="map small" fitKey={String(o.overrides.length)}

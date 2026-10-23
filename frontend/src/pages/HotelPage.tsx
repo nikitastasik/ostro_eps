@@ -102,6 +102,9 @@ export default function HotelPage() {
   const geo = useAsync<GeoData>(() => api.geo(id), [id]);
   const [params] = useSearchParams();
   const q = params.get("q") || "";
+  // ссылка на конкретное окно (демо-тур, «построили дом»): ?facade=ЮЗ&floor=1
+  const urlFacade = params.get("facade") || undefined;
+  const urlFloor = Number(params.get("floor")) || undefined;
   const fit = useAsync(() => (q ? api.fit(id, q) : Promise.resolve(null)), [id, q]);
   const loaded = !!card.data;
   useEffect(() => {
@@ -202,8 +205,9 @@ export default function HotelPage() {
           <div className="card" id="view">
             <h2>Что видно из окна</h2>
             <p className="small muted">Профиль горизонта для выбранной стороны здания и этажа: рельеф, дома, деревья и море по лучам с шагом 1°. Линии — путь Солнца перед закатом 15-го числа каждого месяца; сплошная — закат виден из этого окна.</p>
-            <Panorama key={fit.data?.result.room?.facade || "base"} hotelId={h.id}
-              initialFacade={fit.data?.result.room?.facade || bestFacade} initialFloor={fit.data?.result.room?.min_floor || undefined} />
+            <Panorama key={urlFacade || fit.data?.result.room?.facade || "base"} hotelId={h.id}
+              initialFacade={urlFacade || fit.data?.result.room?.facade || bestFacade}
+              initialFloor={urlFloor || fit.data?.result.room?.min_floor || undefined} />
           </div>
           {h.groups.map((grp) => (
             <div className="card" key={grp.key}>

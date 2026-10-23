@@ -762,11 +762,19 @@ def tour(session: Session = Depends(get_session)):
         for hid in disputed
     }
     conflict = max(disputed.values(), key=lambda c: (boost[c.hotel_id] > 0, c.char_key == "sea_view", -c.id), default=None)
-    scenario = None
-    for rv in session.scalars(select(ResolvedValue).where(ResolvedValue.char_key == "sea_view").order_by(ResolvedValue.hotel_id)):
+    scenario, scenario_window = None, {}
+    built = _built_for(session)
+    if built:  # дом уже построен: ссылка ведёт на тот отель и ту сторону, перед которой он стоит
+        scenario, scenario_window = built["hotel_id"], {"facade": built.get("facade"), "floor": built.get("floor"), "built": True}
+    for rv in (
+        []
+        if built
+        else session.scalars(select(ResolvedValue).where(ResolvedValue.char_key == "sea_view").order_by(ResolvedValue.hotel_id))
+    ):
         v = rv.value or {}
         if v.get("available") and (v.get("min_floor") or 99) <= 3 and (v.get("max_width_deg") or 0) >= 90:
-            scenario = rv.hotel_id
+            # дом строится перед лучшей «морской» стороной — туда же ведёт ссылка на лучи
+            scenario, scenario_window = rv.hotel_id, {"facade": v.get("best_facade"), "floor": v.get("min_floor")}
             if any(r["hotel"]["id"] == rv.hotel_id for r in top):
                 break
     # достоверность: «Вид на море», сведённый из разных источников (расчёт по геоданным и ответ отельера)
@@ -803,10 +811,22 @@ def tour(session: Session = Depends(get_session)):
             else None
         ),
         "conflict_hotel": brief(conflict.hotel_id) if conflict else None,
-        "scenario_hotel": brief(scenario),
+        "scenario_hotel": {**brief(scenario), **scenario_window} if scenario else None,
         "characteristic": "Есть ли круглосуточная аптека в 10 минутах пешком",
         "hotels": session.scalar(select(func.count(Hotel.id))),
     }
+
+
+def _built_for(session: Session) -> dict | None:
+    """Последний построенный дом, который ещё стоит: для какого отеля и стороны его ставили."""
+    active = {o.id for o in session.scalars(select(GeoOverride).where(GeoOverride.active.is_(True)))}
+    if not active:
+        return None
+    for run in session.scalars(select(AgentRun).where(AgentRun.kind == "scenario").order_by(desc(AgentRun.id)).limit(50)):
+        p = run.params or {}
+        if p.get("override_id") in active and p.get("hotel_id") and session.get(Hotel, p["hotel_id"]):
+            return p
+    return None
 
 
 @router.post("/api/demo/reset")
@@ -876,6 +896,9 @@ class BuildingScenario(BaseModel):
     length_m: float = 50
     angle_deg: float = 0
     label: str = "Новый жилой комплекс"
+    hotel_id: str | None = None  # перед окнами какого отеля и какой стороны строим — для ссылки на лучи
+    facade: str | None = None
+    floor: int | None = None
 
 
 @router.post("/api/scenarios/building")
@@ -894,7 +917,17 @@ def scenario_building(body: BuildingScenario, session: Session = Depends(get_ses
     session.add(ov)
     session.flush()
     run = _enqueue(
-        session, "scenario", trigger="change:building", params={"override_id": ov.id, "radius_m": 1200, "label": body.label}
+        session,
+        "scenario",
+        trigger="change:building",
+        params={
+            "override_id": ov.id,
+            "radius_m": 1200,
+            "label": body.label,
+            "hotel_id": body.hotel_id,
+            "facade": body.facade,
+            "floor": body.floor,
+        },
     )
     return {"override": {"id": ov.id, "geometry": ov.geometry, "height_m": ov.height_m, "label": ov.label}, "run": run_dict(run)}
 

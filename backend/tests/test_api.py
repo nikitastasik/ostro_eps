@@ -251,9 +251,22 @@ def test_tour_and_demo_reset(client):
     lon = f["lon"] + 55 * math.sin(az) / (111320 * math.cos(math.radians(f["lat"])))
     client.post(
         "/api/scenarios/building",
-        json={"lat": lat, "lon": lon, "height_m": 50, "width_m": 60, "length_m": 24, "angle_deg": -f["normal_az"]},
+        json={
+            "lat": lat,
+            "lon": lon,
+            "height_m": 50,
+            "width_m": 60,
+            "length_m": 24,
+            "angle_deg": -f["normal_az"],
+            "hotel_id": sh,
+            **window,
+        },
     )
-    assert client.get(f"/api/hotels/{sh}/view", params=window).json()["ray_counts"]["sea"] < rays0["sea"]
+    after_build = client.get(f"/api/hotels/{sh}/view", params=window).json()
+    assert after_build["ray_counts"]["sea"] < rays0["sea"] and any("новый дом" in b["label"] for b in after_build["blockers"])
+    # тур после стройки ведёт к тому же отелю и той же стороне, даже если лучшая «морская» сторона сменилась
+    built = client.get("/api/tour").json()["scenario_hotel"]
+    assert built["id"] == sh and built["built"] and built["facade"] == window["facade"]
     q = client.get("/api/questions", params={"status": "open", "limit": 1}).json()["items"][0]
     token = client.post("/api/auth/login", json={"login": "hotelier", "password": "hotelier123"}).json()["token"]
     client.post(f"/api/hotelier/questions/{q['id']}/answer", json={"text": "Да"}, headers={"Authorization": f"Bearer {token}"})
