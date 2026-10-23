@@ -35,6 +35,14 @@
   --shadow-pop: 0 8px 32px rgba(45, 49, 55, 0.18);
   --font: "Onest Variable", "Onest", "PT Root UI", Helvetica, Arial, sans-serif;
   --topbar-h: 64px;
+  /* Liquid Glass: полупрозрачная заливка + размытие того, что под слоем, + блик по верхней кромке */
+  --glass-blur: blur(18px) saturate(140%);
+  --glass-blur-light: blur(14px) saturate(115%); /* светлое стекло почти не подкрашивается тем, что под ним */
+  --glass-edge: inset 0 1px 0 rgba(255, 255, 255, 0.65), inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+  --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 55%);
+  --glass-light: rgba(255, 255, 255, 0.82);
+  --glass-lime: rgba(173, 239, 129, 0.92); /* почти фирменный #adef81, без шва с полосой поиска */
+  --glass-dark: rgba(45, 49, 55, 0.88); /* белый текст ≥ 4.5:1 и над белым контентом */
 }
 
 * { box-sizing: border-box; }
@@ -346,6 +354,8 @@ table.t tr:hover td { background: #fafafa; }
   margin: 14px 0 0; padding: 10px 0; background: var(--bg);
 }
 .hotel-toc::-webkit-scrollbar { display: none; }
+/* затухание у правого края — видно, что пункты продолжаются */
+.hotel-toc { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent); padding-right: 40px; }
 .hotel-toc a { flex: none; padding: 7px 14px; border-radius: 999px; background: var(--card); color: var(--text); font-size: 14px; white-space: nowrap; }
 .hotel-toc a:hover { color: var(--accent-text); text-decoration: none; }
 /* якоря (#view, #char-…, #scenario, вопросы) не прячутся под липкой шапкой и оглавлением отеля */
@@ -413,6 +423,46 @@ table.cmp tr.group td { background: var(--bg); font-weight: 650; color: var(--te
 .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
 .brand > span { min-width: 0; }
 .brand small { overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- Liquid Glass: только плавающие и навигационные слои, карточки с данными остаются плоскими ---------- */
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .topbar.on-lime {
+    background: var(--glass-sheen), var(--glass-lime);
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.55);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 6px 24px rgba(45, 49, 55, 0.06);
+  }
+  .topbar.on-lime .nav a.active { background: var(--glass-sheen), rgba(255, 255, 255, 0.85); box-shadow: var(--glass-edge); }
+  .hotel-toc { background: rgba(244, 244, 244, 0.72); -webkit-backdrop-filter: var(--glass-blur-light); backdrop-filter: var(--glass-blur-light); }
+  /* чипы оглавления — внутри уже размытой полосы, примеры — на ровном салатовом: размывать нечего, только блик и кромка */
+  .hotel-toc a, .examples button { background: var(--glass-sheen), var(--glass-light); box-shadow: var(--glass-edge), 0 2px 10px rgba(45, 49, 55, 0.06); }
+  .examples button { background: var(--glass-sheen), rgba(255, 255, 255, 0.55); }
+  .leaflet-bar a {
+    background: var(--glass-sheen), var(--glass-light);
+    -webkit-backdrop-filter: var(--glass-blur-light); backdrop-filter: var(--glass-blur-light);
+    box-shadow: var(--glass-edge);
+  }
+  .examples button:hover, .hotel-toc a:hover { background: var(--glass-sheen), rgba(255, 255, 255, 0.86); }
+  .leaflet-bar { border: 0 !important; border-radius: 12px !important; overflow: hidden; box-shadow: none !important; }
+  .leaflet-bar a { color: var(--text) !important; border-bottom-color: rgba(45, 49, 55, 0.08) !important; }
+  .cmp-bar, .toast {
+    background: var(--glass-dark); /* без блика: он высветлял верх строки белого текста */
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.1), var(--shadow-pop);
+  }
+  .modal-back, .drawer-bg { -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+}
+/* «Уменьшить прозрачность» и повышенный контраст в системе — стекло становится сплошным */
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .topbar.on-lime { background: var(--lime); }
+  .hotel-toc { background: var(--bg); }
+  .hotel-toc a, .examples button, .leaflet-bar a { background: var(--card); }
+  .cmp-bar, .toast { background: var(--text); }
+  .topbar, .hotel-toc, .leaflet-bar a, .cmp-bar, .toast, .modal-back, .drawer-bg { -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+/* интерактивное стекло отвечает на нажатие — как .interactive() у Liquid Glass */
+.hotel-toc a, .examples button, .nav a, .cmp-bar .btn { transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), background 0.15s; }
+.hotel-toc a:active, .examples button:active, .nav a:active, .cmp-bar .btn:active { transform: scale(0.96); }
 
 /* шапка в одну строку на ноутбуках: подпись бренда короче, у переключателя LLM — только значок */
 @media (max-width: 1520px) {
