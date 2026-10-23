@@ -254,8 +254,10 @@ scripts/        сборка данных, прогон агентов, оцен
 ## Разработка
 
 ```bash
+make install     # backend/.venv + frontend/node_modules для локальной разработки
 make test        # тесты бэкенда (pytest, SQLite)
-make lint        # ruff + проверка типов TypeScript
+make lint        # ruff (линтер и формат, конфиг ruff.toml) + проверка типов TypeScript
+make fmt         # автоформатирование Python
 make dev         # API на :8080 и Vite на :5173 с горячей перезагрузкой
 make eval        # метрики на размеченных выборках
 # на работающем приложении (нужен Playwright):
@@ -264,4 +266,4 @@ BASE=http://localhost:8080 node scripts/readme_shots.cjs   # скриншоты 
 BASE=http://localhost:8080 node scripts/demo_video.cjs     # скринкаст по docs/DEMO.md с подписями
 ```
 
-CI (`.github/workflows/ci.yml`): ruff, pytest, сборка фронтенда, `docker build` и `docker compose up` с проверкой `/health` и поиска.
+CI (`.github/workflows/ci.yml`): ruff (линтер и формат), pytest, сборка фронтенда, `docker build` и `docker compose up` с проверкой `/health` и поиска.

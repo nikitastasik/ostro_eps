@@ -1,4 +1,7 @@
-.PHONY: up down logs seed reset test lint build data precompute eval dev
+.PHONY: up down logs seed reset install test lint fmt build data precompute eval dev
+
+# Python из backend/.venv (make install), иначе системный python3
+PY := $(if $(wildcard backend/.venv/bin/python),$(CURDIR)/backend/.venv/bin/python,python3)
 
 up:            ## запустить всё (http://localhost:8080)
 	docker compose up --build -d
@@ -17,25 +20,35 @@ seed:          ## пересоздать БД и загрузить демо-з�
 reset:         ## снести контейнеры вместе с данными Postgres
 	docker compose down -v
 
-test:          ## тесты бэкенда (локально, SQLite)
-	cd backend && python -m pytest -q
+install:       ## локальные зависимости для разработки: backend/.venv и frontend/node_modules
+	python3 -m venv backend/.venv
+	backend/.venv/bin/pip install -r backend/requirements-dev.txt
+	cd frontend && npm ci
 
-lint:
-	cd backend && ruff check app tests
+test:          ## тесты бэкенда (локально, SQLite)
+	cd backend && $(PY) -m pytest -q
+
+lint:          ## ruff (линтер + формат) по backend/ и scripts/, проверка типов TypeScript
+	$(PY) -m ruff check .
+	$(PY) -m ruff format --check .
 	cd frontend && npx tsc --noEmit
+
+fmt:           ## автоформатирование Python
+	$(PY) -m ruff check --fix .
+	$(PY) -m ruff format .
 
 build:         ## проверить сборку образа
 	docker build -t ostrovok-hotel-knowledge .
 
 dev:           ## локальная разработка: API на :8080 (SQLite) + Vite на :5173
-	cd backend && WORKER_ENABLED=true uvicorn app.main:app --reload --port 8080 &
+	cd backend && WORKER_ENABLED=true $(PY) -m uvicorn app.main:app --reload --port 8080 &
 	cd frontend && npm run dev
 
 eval:          ## метрики качества на размеченных выборках
-	python scripts/evaluate.py
+	$(PY) scripts/evaluate.py
 
 data:          ## пересобрать данные региона из сырых источников (нужна сеть, ~40 мин)
 	sh scripts/fetch_data.sh
 
 precompute:    ## заново прогнать агентов по всем отелям → data/seed/seed.json.gz (~10 мин)
-	python scripts/precompute.py
+	$(PY) scripts/precompute.py

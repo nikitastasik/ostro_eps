@@ -5,6 +5,8 @@ services:
     platform: linux/amd64
     env_file:
       - .env.example
+      - path: .env
+        required: false
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-app}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app}
@@ -25,8 +27,10 @@ services:
     platform: linux/amd64
     env_file:
       - .env.example
+      - path: .env
+        required: false
     environment:
-      # значения из .env (если он есть) перекрывают .env.example
+      # .env (если он есть) перекрывает .env.example; ниже — значения с дефолтами из .env
       APP_PORT: 8080
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-app}@db:5432/${POSTGRES_DB:-ostrovok}
       LLM_API_KEY: ${LLM_API_KEY:-}

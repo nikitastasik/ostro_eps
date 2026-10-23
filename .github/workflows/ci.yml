@@ -17,9 +17,10 @@ jobs:
           cache-dependency-path: backend/requirements-dev.txt
       - name: Зависимости
         run: pip install -r backend/requirements-dev.txt
-      - name: Линтер
-        working-directory: backend
-        run: ruff check app tests
+      - name: Линтер и формат (backend/ и scripts/, конфиг ruff.toml)
+        run: |
+          ruff check .
+          ruff format --check .
       - name: Тесты (геодвижок, парсеры, сквозной API на SQLite)
         working-directory: backend
         run: python -m pytest -q
