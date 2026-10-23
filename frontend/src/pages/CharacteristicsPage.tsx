@@ -98,7 +98,7 @@ export default function CharacteristicsPage() {
         return (
           <div key={g.key} className="card">
             <h2>{g.title}</h2>
-            <table className="t">
+            <div className="table-scroll"><table className="t">
               <thead><tr><th style={{ width: "28%" }}>Характеристика</th><th>Рецепт агентов</th><th>Годность</th><th>Покрытие</th><th>Уверенность</th><th /></tr></thead>
               <tbody>
                 {items.map((c: any) => (
@@ -124,7 +124,7 @@ export default function CharacteristicsPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </div>
         );
       })}

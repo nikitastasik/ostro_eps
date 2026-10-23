@@ -36,7 +36,7 @@ export default function HotelsPage() {
       {list.loading && <Spinner />}
       <div className="layout-search">
         <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-          <table className="t">
+          <div className="table-scroll"><table className="t">
             <thead><tr><th>Отель</th><th>Этажей</th><th>Море</th><th>Закат</th><th>Ночью, дБ</th><th>До пляжа</th><th>Покрытие</th><th /></tr></thead>
             <tbody>
               {items.map((h) => (
@@ -52,7 +52,7 @@ export default function HotelsPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
           {items.length === 0 && !list.loading && <div className="empty">Ничего не найдено</div>}
         </div>
         <div className="sticky">

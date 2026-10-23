@@ -150,7 +150,7 @@ export default function HotelierPage() {
         <h1>Кабинет отельера</h1>
         <button className="btn small ghost" onClick={() => { setToken(null); setAuthed(false); }}>Выйти</button>
       </div>
-      <div className="layout-search" style={{ gridTemplateColumns: "300px minmax(0, 1fr)" }}>
+      <div className="layout-hotelier">
         <div className="card" style={{ padding: 12 }}>
           <input className="input" placeholder="Найти свой отель" value={q} onChange={(e) => setQ(e.target.value)} />
           <div style={{ maxHeight: 640, overflow: "auto", marginTop: 8 }}>

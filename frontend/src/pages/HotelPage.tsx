@@ -248,7 +248,7 @@ export default function HotelPage() {
           {g && g.facades.length > 0 && (
             <div className="card">
               <h3>По сторонам здания</h3>
-              <table className="t facade-table">
+              <div className="table-scroll"><table className="t facade-table">
                 <thead><tr><th>Сторона</th><th>Ночью</th><th>Море</th><th>Закат</th></tr></thead>
                 <tbody>
                   {g.facades.map((f) => (
@@ -260,7 +260,7 @@ export default function HotelPage() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             </div>
           )}
         </div>

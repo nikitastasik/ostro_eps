@@ -80,6 +80,7 @@ input, textarea, select { font-family: inherit; font-size: 15px; }
 .small { font-size: 13px; }
 .tiny { font-size: 12px; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
+.mono, .small, .tiny { overflow-wrap: anywhere; }
 .nowrap { white-space: nowrap; }
 .hr { height: 1px; background: var(--line); margin: 14px 0; }
 .mt { margin-top: 14px; }
@@ -294,15 +295,45 @@ table.cmp tr.group td { background: #f4f6fa; font-weight: 700; color: var(--mute
 .cmp-bar { position: fixed; bottom: 18px; right: 18px; z-index: 1500; background: #13213b; color: white; border-radius: 14px; padding: 10px 12px 10px 16px; display: flex; gap: 10px; align-items: center; box-shadow: 0 8px 30px rgba(0,0,0,.25); }
 .cmp-bar .btn { padding: 6px 12px; }
 
+.layout-hotelier { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 16px; margin-top: 16px; align-items: start; }
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
+.brand > span { min-width: 0; }
+.brand small { overflow: hidden; text-overflow: ellipsis; }
+
 @media (max-width: 1100px) {
-  .layout-search, .layout-hotel { grid-template-columns: 1fr; }
+  .layout-search, .layout-hotel, .layout-hotelier { grid-template-columns: minmax(0, 1fr); }
+  .layout-search > *, .layout-hotel > *, .layout-hotelier > *, .groups > * { min-width: 0; }
+  .input, input, select, textarea { max-width: 100%; }
+  /* шапка: бренд и переключатель LLM в первой строке, навигация — прокручиваемой строкой ниже */
+  .topbar { flex-wrap: wrap; row-gap: 4px; }
+  .nav { order: 3; width: 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -4px; }
+  .nav::-webkit-scrollbar { display: none; }
+  .nav a { white-space: nowrap; }
   .sticky { position: static; }
   .grid.four { grid-template-columns: repeat(2, 1fr); }
   .grid.three { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 700px) {
-  .page { padding: 14px 14px 60px; }
-  .topbar { padding: 8px 14px; flex-wrap: wrap; }
+  .page { padding: 14px 16px 60px; }
+  .topbar { padding: 8px 16px; }
+  .brand small { max-width: 52vw; white-space: nowrap; }
+  .llm-text { display: none; }
+  .row { flex-wrap: wrap; }
+  .hero { padding: 20px 18px; }
+  .searchbox { flex-direction: column; align-items: stretch; }
+  .searchbox .btn { justify-content: center; }
+  .examples button, .chip { white-space: normal; text-align: left; }
+  .hotel-head { flex-direction: column; }
+  .tabs { overflow-x: auto; scrollbar-width: none; }
+  .tabs button { white-space: nowrap; }
+  .result { grid-template-columns: 48px minmax(0, 1fr); gap: 10px; padding: 12px; }
+  .rays-map { height: 300px; }
+  .map { height: 340px; }
+  .modal { padding: 14px; }
+  /* зоны нажатия не меньше 40 px */
+  .btn, .nav a, .facade-tabs button, .tabs button, .month-select, .examples button { min-height: 40px; }
+  .chip .x { display: inline-grid; place-items: center; min-width: 28px; min-height: 28px; }
+  .cmp-bar { left: 12px; right: 12px; bottom: 12px; flex-wrap: wrap; }
   .grid.two, .grid.three, .grid.four { grid-template-columns: 1fr; }
   h1 { font-size: 24px; }
   .log .st { grid-template-columns: 1fr; }

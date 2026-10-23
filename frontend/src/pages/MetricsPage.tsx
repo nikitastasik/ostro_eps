@@ -68,10 +68,10 @@ export default function MetricsPage() {
               <h2>Проверка геометодов</h2>
               <h3>Положение Солнца (NOAA) против PyEphem</h3>
               <div className="small">Макс. ошибка времени заката <b>{d.eval.sun.max_time_error_min} мин</b>, азимута <b>{d.eval.sun.max_azimuth_error_deg}°</b> на 12 датах. <span className="muted">{d.eval.sun.reference}</span></div>
-              <table className="t mt-s">
+              <div className="table-scroll"><table className="t mt-s">
                 <thead><tr><th>Дата</th><th>Закат</th><th>Эталон</th><th>Азимут</th><th>Эталон</th></tr></thead>
                 <tbody>{d.eval.sun.checks.map((c: any) => <tr key={c.date}><td>{c.date}</td><td>{c.sunset}</td><td>{c.ref_sunset}</td><td>{c.azimuth}°</td><td>{c.ref_azimuth}°</td></tr>)}</tbody>
-              </table>
+              </table></div>
               {d.eval.levels_imputation && (
                 <>
                   <h3 className="mt">Этажность зданий без тега</h3>
@@ -123,7 +123,7 @@ export default function MetricsPage() {
 
           <div className="card mt">
             <h2>По характеристикам</h2>
-            <table className="t">
+            <div className="table-scroll"><table className="t">
               <thead><tr><th>Характеристика</th><th>Покрытие</th><th>Ср. уверенность</th><th>Источники</th><th>Вопросов отельерам</th><th>Противоречий</th><th>Устарело</th></tr></thead>
               <tbody>
                 {d.per_characteristic.map((c: any) => (
@@ -138,7 +138,7 @@ export default function MetricsPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </div>
         </>
       )}

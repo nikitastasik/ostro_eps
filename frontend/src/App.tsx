@@ -48,7 +48,7 @@ export default function App() {
         <div className="spacer" />
         {m && (
           <span className={`chip ${m.llm.enabled ? "good" : "ghost"}`} title={m.llm.enabled ? `Модель ${m.llm.model}` : "LLM не подключена: запросы и ответы разбираются правилами. Добавьте LLM_API_KEY в .env"}>
-            <Icon name="bolt" size={14} /> {m.llm.enabled ? `LLM: ${m.llm.model}` : "LLM выкл · правила"}
+            <Icon name="bolt" size={14} /> <span className="llm-text">{m.llm.enabled ? `LLM: ${m.llm.model}` : "LLM выкл · правила"}</span>
           </span>
         )}
       </header>
