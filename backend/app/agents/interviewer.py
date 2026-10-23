@@ -12,6 +12,7 @@ from .. import llm
 from ..knowledge.registry import get_spec
 from ..models import Fact, Hotel, Question, utcnow
 from ..nlp.answer_parser import parse_answer
+from ..nlp.ru import dec
 from ..tools.base import plural
 from . import arbiter
 
@@ -263,7 +264,7 @@ def answer_question(session: Session, question: Question, text: str, answered_by
                              reason="hotelier_answer")
         if logger:
             logger.step("Арбитр", "result", f"Итог «{spec['title']}»: {rv.summary or '—'} "
-                        f"[{arbiter.STATUS_RU.get(rv.status, rv.status)}, уверенность {rv.confidence:.2f}]",
+                        f"[{arbiter.STATUS_RU.get(rv.status, rv.status)}, уверенность {dec(rv.confidence, 2)}]",
                         char_key=key, payload={"status": rv.status, "confidence": rv.confidence})
     question.parsed = result
     question.parse_method = next((v["method"] for v in result.values()), None)

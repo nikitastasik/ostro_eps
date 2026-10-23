@@ -9,7 +9,8 @@ from shapely.geometry import LineString, Point
 
 from ..geo.opening_hours import parse as parse_oh
 from ..knowledge.categories import FOOD, plural_gen, title
-from .base import ToolResult, cap, plural, quote, tool
+from ..nlp.ru import NEAR_M, dist_text, walk_min_text
+from .base import ToolResult, cap, named, plural, quote, tool
 
 AGENT = "Исследователь OSM"
 
@@ -57,9 +58,7 @@ def areas_near(ctx, cats: set[str], radius: float) -> list[tuple[dict, float]]:
     return out
 
 
-def _fmt_m(d: float) -> str:
-    # «0 м» для объекта в том же здании выглядит как ошибка — округляем до 10 м
-    return f"{d / 1000:.1f} км".replace(".", ",") if d >= 1000 else f"{max(10, round(d / 10) * 10):.0f} м"
+_fmt_m = dist_text
 
 
 # ----------------------------------------------------------------------------------------
@@ -152,8 +151,8 @@ def night_services(ctx, params) -> ToolResult:
         "food_night": food_night, "hours_known_share": round(share, 2), "items": items,
     }
     parts = []
-    ph_name = ph[0].name if ph and ph[0].name and ph[0].name.strip().lower() != "аптека" else None
-    parts.append(f"ночная аптека{' ' + quote(ph_name) if ph_name else ''} — {_fmt_m(ph[1])} пешком ({ph[2].summary()})" if ph
+    ph_where = (("прямо рядом" if ph[1] < NEAR_M else f"{_fmt_m(ph[1])} пешком") if ph else "")
+    parts.append(f"{named('аптека', ph[0].name, 'ночная')} — {ph_where} ({ph[2].summary()})" if ph
                  else "круглосуточной аптеки в 1,5 км по данным OSM нет")
     parts.append(f"круглосуточный магазин в {_fmt_m(sh[1])}" if sh else "круглосуточного магазина рядом не найдено")
     if food_night:
@@ -183,8 +182,8 @@ def families(ctx, params) -> ToolResult:
     }
     parts = [f"детских площадок в 400 м: {count}" + (f" (ближайшая в {_fmt_m(nearest_pg)})" if nearest_pg is not None else "")]
     if park:
-        pname = f" {quote(value['park_name'])}" if value["park_name"] else ""
-        parts.append(f"парк{pname} прямо у отеля" if value["park_m"] < 60 else f"парк{pname} — {value['park_minutes']:.0f} мин пешком")
+        park = named("парк", value["park_name"])
+        parts.append(f"{park} прямо у отеля" if value["park_m"] < 60 else f"{park} — {walk_min_text(value['park_minutes'])}")
     if kh:
         parts.append(f"детская больница в {value['kids_hospital_km']} км".replace(".", ","))
     return ToolResult(value, cap("; ".join(parts)), 0.68, "osm", _detail(ctx, "leisure=playground/park, amenity=hospital"))
@@ -251,8 +250,8 @@ def green_walk(ctx, params) -> ToolResult:
              "dog_park_m": round(dog_d) if dog_d is not None else None}
     parts = []
     if park:
-        pname = f" {quote(value['park_name'])}" if value["park_name"] else ""
-        parts.append(f"парк или сквер{pname} прямо у отеля" if value["park_m"] < 60 else f"парк{pname} в {_fmt_m(park[0].length_m)} пешком")
+        pk = named("парк", value["park_name"]) if value["park_name"] else "парк или сквер"
+        parts.append(f"{pk} прямо у отеля" if value["park_m"] < 60 else f"{pk} в {_fmt_m(park[0].length_m)} пешком")
     parts.append(f"зелёных зон в 500 м: {value['green_ha_500m']} га".replace(".", ",") if green >= 1000
                  else "зелёных зон в 500 м почти нет")
     parts.append(f"площадка для собак в {_fmt_m(dog_d)}" if dog_d is not None else "специальных площадок для собак рядом нет")
@@ -461,7 +460,8 @@ def poi_walk(ctx, params) -> ToolResult:
     p, r = best
     value = {"available": r.minutes_to <= max_min, "minutes_to": round(r.minutes_to, 1), "minutes_back": round(r.minutes_back, 1),
              "walk_m": round(r.length_m), "climb_back_m": round(r.climb_back_m), "name": p.name}
-    s = f"{cap(title(p.cat))}{' ' + quote(p.name) if p.name else ''}: {value['walk_m']} м, ≈{value['minutes_to']:.0f} мин пешком"
+    where = "прямо рядом" if value["walk_m"] < NEAR_M else f"{_fmt_m(value['walk_m'])}, {walk_min_text(value['minutes_to'])}"
+    s = f"{cap(named(title(p.cat).lower(), p.name))}: {where}"
     return ToolResult(value, s, 0.75, "osm", _detail(ctx, label))
 
 

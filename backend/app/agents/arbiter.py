@@ -16,6 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..models import Change, Conflict, Fact, Question, ResolvedValue, utcnow
+from ..nlp.ru import dec
 
 SOURCE_RU = {
     "geo": "расчёт по геоданным", "osm": "OpenStreetMap", "osm_estimate": "оценка по соседним зданиям",
@@ -121,7 +122,7 @@ def resolve(session: Session, hotel_id: str, spec: dict, run_id: int | None = No
         conf *= 1 - effective_confidence(f, now)
     conf = min(0.97, 1 - conf)
     status = "ok"
-    expl = [f"Основной источник: {SOURCE_RU.get(primary.source, primary.source)} (уверенность {p_conf:.2f})"]
+    expl = [f"Основной источник: {SOURCE_RU.get(primary.source, primary.source)} (уверенность {dec(p_conf, 2)})"]
     if agreeing:
         expl.append("согласуется: " + ", ".join(SOURCE_RU.get(f.source, f.source) for f in agreeing))
 

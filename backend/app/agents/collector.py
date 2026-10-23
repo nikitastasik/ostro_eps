@@ -14,6 +14,7 @@ import time
 from sqlalchemy import select
 
 from ..models import Fact, Question, utcnow
+from ..nlp.ru import dec
 from ..tools.base import get_tool
 from . import arbiter
 from .context import HotelContext
@@ -47,7 +48,7 @@ def collect(ctx: HotelContext, spec: dict, run_id: int | None, logger, reason: s
     recipe = spec.get("recipe", [])
     threshold = float(spec.get("confidence_threshold", 0.4))
     tools_txt = " → ".join(step["tool"] for step in recipe) or "нет"
-    logger.step("Оркестратор", "plan", f"«{spec['title']}»: план {tools_txt}; порог уверенности {threshold:.2f}",
+    logger.step("Оркестратор", "plan", f"«{spec['title']}»: план {tools_txt}; порог уверенности {dec(threshold, 2)}",
                 char_key=key)
     got: list = []
     for step in recipe:
@@ -62,7 +63,7 @@ def collect(ctx: HotelContext, spec: dict, run_id: int | None, logger, reason: s
                     "verify": bool(got) and not has_fact}.get(when, False)
             if not need:
                 why = ("ответ отельера уже есть" if has_fact else
-                       f"уверенность {best:.2f} ≥ порога {threshold:.2f}" if when == "low_confidence" else
+                       f"уверенность {dec(best, 2)} ≥ порога {dec(threshold, 2)}" if when == "low_confidence" else
                        "данные получены из открытых источников")
                 logger.step("Интервьюер", "decision", f"Вопрос отельеру не нужен: {why}", char_key=key)
                 continue
@@ -77,7 +78,7 @@ def collect(ctx: HotelContext, spec: dict, run_id: int | None, logger, reason: s
             hyp = got[-1].summary if got and when in {"low_confidence", "verify"} else None
             why = {"always_once": "эту характеристику знает только отельер",
                    "missing": "в открытых данных ответа нет",
-                   "low_confidence": f"уверенность расчёта {best:.2f} ниже порога {threshold:.2f}",
+                   "low_confidence": f"уверенность расчёта {dec(best, 2)} ниже порога {dec(threshold, 2)}",
                    "verify": "расчёт — ключевое преимущество отеля, просим отельера подтвердить"}[when]
             res = get_tool(name).fn(ctx, {"spec": spec, "reason": reason_q, "hypothesis": hyp, "run_id": run_id})
             logger.step("Интервьюер", "question", f"Спрашиваю отельера ({why}): «{res.summary.split('«', 1)[-1].rstrip('»')}»",
@@ -102,7 +103,7 @@ def collect(ctx: HotelContext, spec: dict, run_id: int | None, logger, reason: s
             continue
         fact = save_fact(ctx, spec, name, res, run_id)
         got.append(res)
-        logger.step(tool.agent, "result", f"{res.summary} (уверенность {res.confidence:.2f})", char_key=key,
+        logger.step(tool.agent, "result", f"{res.summary} (уверенность {dec(res.confidence, 2)})", char_key=key,
                     duration_ms=ms, payload={"fact_id": fact.id, "source": res.source, "confidence": res.confidence,
                                              "evidence": res.evidence})
         if key == "building_levels":
@@ -111,6 +112,6 @@ def collect(ctx: HotelContext, spec: dict, run_id: int | None, logger, reason: s
     if key == "building_levels":
         ctx.reset_geo()
     status_ru = arbiter.STATUS_RU.get(rv.status, rv.status)
-    logger.step("Арбитр", "result", f"Итог «{spec['title']}»: {rv.summary or '—'} [{status_ru}, уверенность {rv.confidence:.2f}]",
+    logger.step("Арбитр", "result", f"Итог «{spec['title']}»: {rv.summary or '—'} [{status_ru}, уверенность {dec(rv.confidence, 2)}]",
                 char_key=key, payload={"status": rv.status, "confidence": rv.confidence, "sources": rv.sources})
     return rv

@@ -146,3 +146,38 @@ def has_any(text: str, stems: list[str]) -> bool:
         if find_phrase(toks, phrase_tokens(s)) is not None:
             return True
     return False
+
+
+# ---------------------------------------------------------------- фразы для пользователя: расстояния и время
+NEAR_M = 40  # ближе этого объект «прямо у» отеля: точность контуров OSM всё равно около 10–20 м
+
+
+def dec(x: float, digits: int = 1) -> str:
+    """Десятичная запятая: 0.85 → «0,85»."""
+    return f"{x:.{digits}f}".replace(".", ",")
+
+
+def dist_text(m: float) -> str:
+    """Расстояние для текста: «80 м», «1,2 км». Округляем до 10 м и не пишем «0 м»."""
+    if m >= 1000:
+        return f"{dec(m / 1000)} км"
+    return f"{max(10, round(m / 10) * 10):.0f} м"
+
+
+def walk_min_text(minutes: float, suffix: str = " пешком") -> str:
+    """«≈5 мин пешком», «меньше минуты пешком»."""
+    return ("меньше минуты" if minutes < 1 else f"≈{minutes:.0f} мин") + suffix
+
+
+def there_back_text(to: float, back: float) -> str:
+    """«≈5 мин туда, ≈6 мин обратно» или «меньше минуты в обе стороны»."""
+    if to < 1 and back < 1:
+        return "меньше минуты в обе стороны"
+    return f"{walk_min_text(to, ' туда')}, {walk_min_text(back, ' обратно')}"
+
+
+def walk_to_text(place_gen: str, meters: float, minutes: float, near: str) -> str:
+    """«до пляжа 230 м, ≈3 мин пешком»; ближе NEAR_M — фраза near («прямо у пляжа (первая линия)»)."""
+    if meters < NEAR_M:
+        return near
+    return f"до {place_gen} {dist_text(meters)}, {walk_min_text(minutes)}"

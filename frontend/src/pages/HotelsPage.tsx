@@ -46,7 +46,7 @@ export default function HotelsPage() {
                   <td>{h.badges.sea_view ? <span className="badge blue">есть</span> : <span className="muted">—</span>}</td>
                   <td>{h.badges.sunset ? <span className="badge ok">есть</span> : <span className="muted">—</span>}</td>
                   <td>{h.badges.quiet_db != null ? Math.round(h.badges.quiet_db) : "—"}</td>
-                  <td className="nowrap">{h.badges.beach_min != null ? `${Math.round(h.badges.beach_min)} мин` : "—"}</td>
+                  <td className="nowrap">{h.badges.beach_min != null ? (h.badges.beach_min < 1 ? "<1 мин" : `${Math.round(h.badges.beach_min)} мин`) : "—"}</td>
                   <td style={{ minWidth: 90 }}><div className="meter"><i style={{ width: `${h.coverage * 100}%` }} /></div></td>
                   <td><button className={`btn small ${cmp.has(h.id) ? "primary" : ""}`} onClick={() => cmp.toggle(h.id, h.name)}>{cmp.has(h.id) ? "✓" : "+"}</button></td>
                 </tr>

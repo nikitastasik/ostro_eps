@@ -84,6 +84,24 @@ def quote(name: str) -> str:
     return f"«{s}»"
 
 
+def named(kind: str, name: str | None, adj: str | None = None) -> str:
+    """«парк „Ривьера“», «галечный пляж «Маяк»» без повторов, если в названии из OSM уже есть слово kind."""
+    head = f"{adj} {kind}" if adj else kind
+    name = " ".join((name or "").split())
+    low, k = name.lower(), kind.lower()
+    if not name or low == k:
+        return head
+    if low.startswith(k + " "):
+        rest = name[len(kind) + 1:].strip()
+        if rest[:1].isupper() or rest[:1].isdigit() or rest[:1] in "\"«":
+            rest = rest.strip("\"«»")
+            return f"{head} {quote(rest)}"
+        return f"{head} {rest}"
+    if k in low:
+        return name + (f" ({adj})" if adj else "")
+    return f"{head} {quote(name)}"
+
+
 TOOLS: dict[str, Tool] = {}
 
 

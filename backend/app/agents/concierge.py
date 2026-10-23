@@ -18,6 +18,7 @@ from ..geo.analysis import facade_acc, facade_gen, month_ranges
 from ..knowledge.registry import all_specs
 from ..models import Hotel, Question, ResolvedValue, SearchLog
 from ..nlp.query_parser import Criterion, ParsedQuery, criteria_from_dicts, parse_query
+from ..nlp.ru import walk_min_text, walk_to_text
 
 PRIOR = 0.3  # ожидание совпадения, когда данных нет
 MONTHS_PREP = ["январе", "феврале", "марте", "апреле", "мае", "июне", "июле", "августе", "сентябре", "октябре",
@@ -176,7 +177,7 @@ def hotel_text(key: str, rv: ResolvedValue | None) -> str:
         return ""
     v = rv.value
     if key == "beach_access" and v.get("minutes_to") is not None:
-        s = f"до пляжа {v['walk_m']} м, ≈{v['minutes_to']:.0f} мин пешком"
+        s = walk_to_text("пляжа", v["walk_m"], v["minutes_to"], "прямо у пляжа (первая линия)")
         extras = []
         if (v.get("climb_back_m") or 0) >= 15:
             extras.append(f"обратно подъём {v['climb_back_m']} м")
@@ -188,7 +189,7 @@ def hotel_text(key: str, rv: ResolvedValue | None) -> str:
             extras.append({"underpass": "подземный переход под ж/д", "bridge": "мост над ж/д", "level": "через ж/д пути"}[v["rail"]])
         return s + (f" ({'; '.join(extras)})" if extras else "")
     if key == "center_access" and v.get("minutes_to") is not None:
-        return f"до центра ≈{v['minutes_to']:.0f} мин пешком"
+        return f"до центра {walk_min_text(v['minutes_to'])}"
     return rv.summary.split(";")[0] if rv.summary else ""
 
 

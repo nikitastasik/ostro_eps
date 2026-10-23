@@ -117,3 +117,20 @@ def test_conflict_clarification_cycle(client):
     still = [c for c in client.get("/api/conflicts?status=open&limit=500").json()["items"]
              if c["hotel_id"] == q["hotel_id"] and c["char_key"] == "sea_view"]
     assert not still
+
+
+def test_runtime_texts_are_clean(client):
+    """Корректор по текстам поиска, карточек и сравнения: без «0 м», «≈0 мин», непарных кавычек и т. п."""
+    from app.nlp.textlint import anomalies
+
+    bad = []
+    for q in client.get("/api/meta").json()["examples"]:
+        r = client.post("/api/search", json={"query": q, "limit": 400}).json()
+        for res in r["results"]:
+            texts = [n["text"] for n in res["needs"]] + [res["summary"], (res.get("room") or {}).get("text", "")]
+            bad += [(q, res["hotel"]["name"], t, anomalies(t)) for t in texts if anomalies(t)]
+    ids = [h["id"] for h in client.get("/api/hotels").json()["items"][:6]]
+    cmp = client.get("/api/compare", params={"ids": ",".join(ids)}).json()
+    bad += [("compare", row["title"], c["summary"], anomalies(c["summary"])) for row in cmp["rows"] for c in row["cells"]
+            if anomalies(c["summary"])]
+    assert not bad, bad[:5]

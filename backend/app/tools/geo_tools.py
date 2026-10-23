@@ -8,7 +8,8 @@ import numpy as np
 
 from ..geo.analysis import month_ranges
 from ..geo.sun import angle_diff
-from .base import ToolResult, cap, quote, tool
+from ..nlp.ru import NEAR_M, dist_text, there_back_text, walk_min_text
+from .base import ToolResult, cap, named, quote, tool
 
 AGENT = "Геоаналитик"
 LEVEL_FACTOR = {"osm_levels": 1.0, "osm_height": 1.0, "osm_parts": 1.0, "hotelier": 1.0, "hotelier_confirmed": 1.0,
@@ -134,20 +135,8 @@ def _rail_ru(kind: str | None) -> str:
 
 
 def _beach_text(name: str | None, surface_ru: str | None) -> str:
-    """«галечный пляж „Маяк“»: без повторов, когда в названии из OSM уже есть слово «пляж»."""
-    name = " ".join((name or "").split())
-    kind = f"{surface_ru} пляж" if surface_ru else "пляж"
-    if not name or name.lower() == "пляж":
-        return kind
-    if name.lower().startswith("пляж "):
-        rest = name[5:].strip()
-        if rest[:1].isupper() or rest[:1] in "\"«":
-            rest = rest.strip("\"«»")
-            return f"{kind} {quote(rest)}"
-        return f"{kind} {rest}"
-    if "пляж" in name.lower():
-        return name + (f" ({surface_ru})" if surface_ru else "")
-    return f"{kind} {quote(name)}"
+    """«галечный пляж «Маяк»»: без повторов, когда в названии из OSM уже есть слово «пляж»."""
+    return named("пляж", name, surface_ru)
 
 
 @tool("geo.walk_beach", "Пеший маршрут до пляжа", AGENT, ["OSM пешеходный граф", "OSM пляжи natural=beach", "Copernicus DEM"],
@@ -178,7 +167,8 @@ def walk_beach(ctx, params) -> ToolResult:
                   "access": (area or {}).get("access")},
         **geo.route_payload(route),
     }
-    parts = [f"{value['walk_m']} м пешком (≈{value['minutes_to']:.0f} мин туда, ≈{value['minutes_back']:.0f} мин обратно)"]
+    parts = (["прямо у пляжа (первая линия)"] if value["walk_m"] < NEAR_M else
+             [f"{dist_text(value['walk_m'])} пешком ({there_back_text(value['minutes_to'], value['minutes_back'])})"])
     if straight is not None and value["walk_m"] > 1.6 * max(straight, 50):
         parts.append(f"по прямой всего {round(straight)} м — путь в обход")
     if value["climb_back_m"] >= 15:
@@ -214,7 +204,7 @@ def walk_center(ctx, params) -> ToolResult:
     value = {"walk_m": round(route.length_m), "minutes_to": round(route.minutes_to, 1),
              "minutes_back": round(route.minutes_back, 1), "climb_to_m": round(route.climb_to_m),
              "climb_back_m": round(route.climb_back_m), "target": center["name"], **geo.route_payload(route)}
-    s = f"До {center['name_gen']} {value['walk_m']} м пешком, ≈{value['minutes_to']:.0f} мин"
+    s = f"До {center['name_gen']} {dist_text(value['walk_m'])} пешком, {walk_min_text(value['minutes_to'], '')}"
     if value["climb_to_m"] >= 15 or value["climb_back_m"] >= 15:
         s += f" (набор высоты {value['climb_to_m']} м туда / {value['climb_back_m']} м обратно)"
     return ToolResult(value, s, 0.85 if start_d < 60 else 0.65, "geo", detail, evidence={"target": center})
@@ -273,10 +263,10 @@ def transport(ctx, params) -> ToolResult:
         return ToolResult(None, "Нет данных о транспорте рядом", 0.0, "geo", detail, status="no_data")
     parts = []
     if "bus_stop_m" in value:
-        parts.append(f"остановка в {value['bus_stop_m']} м" + (f" ({quote(value['bus_stop_name'])})" if value.get("bus_stop_name") else ""))
+        stop = "остановка прямо у отеля" if value["bus_stop_m"] < NEAR_M else f"остановка в {dist_text(value['bus_stop_m'])}"
+        parts.append(stop + (f" ({quote(value['bus_stop_name'])})" if value.get("bus_stop_name") else ""))
     if "station" in value:
-        walk = "меньше минуты" if value["station_minutes"] < 1 else f"{value['station_minutes']:.0f} мин"
-        parts.append(f"ж/д станция {quote(value['station'])} — {walk} пешком")
+        parts.append(f"ж/д станция {quote(value['station'])} — {walk_min_text(value['station_minutes'])}")
         if value.get("airport_train"):
             parts.append("с неё ходят прямые поезда до аэропорта")
     if "airport_drive_min" in value:
