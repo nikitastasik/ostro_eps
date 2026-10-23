@@ -3,6 +3,7 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { api, CharValue, Fact, GeoData, HotelCard, Run } from "../api";
 import MapView from "../MapView";
 import Panorama from "../Panorama";
+import { WishButton } from "../Wish";
 import RunLog, { RunDrawer } from "../RunLog";
 import { Confidence, ErrorBox, fmtDate, Icon, KIND_RU, NeedsList, plural, Sources, Spinner, StatusBadge, useAsync, useCompare, useToast } from "../ui";
 
@@ -192,7 +193,10 @@ export default function HotelPage() {
         <div className="card mt fit-card">
           <div className="row between wrap">
             <h2 style={{ margin: 0 }}>Под ваш запрос</h2>
-            <span className="small muted">«{q}» · <Link to={`/?q=${encodeURIComponent(q)}`}>к выдаче</Link></span>
+            <div className="row wrap">
+              <span className="small muted">«{q}» · <Link to={`/?q=${encodeURIComponent(q)}`}>к выдаче</Link></span>
+              <WishButton hotelId={h.id} q={q} />
+            </div>
           </div>
           {fit.data.result.room && (
             <div className="room">

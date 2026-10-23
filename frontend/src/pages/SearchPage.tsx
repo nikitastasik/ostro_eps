@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api, Criterion, Meta, SearchResponse, SearchResult } from "../api";
 import MapView from "../MapView";
+import { WishButton } from "../Wish";
 import { ErrorBox, Icon, KIND_RU, NeedsList, plural, ScoreRing, scoreColor, Spinner, useCompare } from "../ui";
 
 const OP_RU: Record<string, string> = { le: "≤", ge: "≥", lt: "<", gt: ">", eq: "=", ne: "≠", in: "∈", contains: "∋", nonempty: "" };
@@ -65,6 +66,7 @@ function ResultCard({ r, rank, hl, onHover, q }: { r: SearchResult; rank: number
               {cmp.has(h.id) ? "В сравнении" : "Сравнить"}
             </button>
             <Link className="btn small" to={href(h.id)}>Подробнее</Link>
+            <WishButton hotelId={h.id} q={q} small />
           </div>
         </div>
         {r.room && (

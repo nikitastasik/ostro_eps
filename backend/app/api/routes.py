@@ -14,7 +14,7 @@ from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 
 from .. import llm
-from ..agents import arbiter, concierge, orchestrator
+from ..agents import arbiter, concierge, orchestrator, wish
 from ..agents.compiler import compile_text
 from ..agents.dedup import short_street
 from ..agents.interviewer import parse_with_llm, render_summary
@@ -224,6 +224,15 @@ def hotel_geo(hotel_id: str, session: Session = Depends(get_session)):
 def hotel_fit(hotel_id: str, q: str, session: Session = Depends(get_session)):
     """Как отель подходит под запрос: статусы пожеланий, совет по номеру, доля подходящих номеров."""
     res = concierge.fit(session, hotel_id, q.strip())
+    if res is None:
+        raise HTTPException(404, "Отель не найден")
+    return res
+
+
+@router.get("/api/hotels/{hotel_id}/wish")
+def hotel_wish(hotel_id: str, q: str, session: Session = Depends(get_session)):
+    """Пожелание к бронированию: готовый текст, почему так и вопросы о том, чего система не знает."""
+    res = wish.build(session, hotel_id, q.strip())
     if res is None:
         raise HTTPException(404, "Отель не найден")
     return res

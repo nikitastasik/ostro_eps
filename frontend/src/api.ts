@@ -231,6 +231,18 @@ export interface ViewData {
 
 export type RayKind = "sea" | "building" | "trees" | "land" | "mountain";
 
+export interface WishData {
+  hotel: SearchResult["hotel"];
+  query: string;
+  text: string;
+  text_rules: string;
+  method: "rules" | "llm";
+  reasons: { title: string; status: string; text: string; sources: string[]; confidence: number }[];
+  questions: string[];
+  room: SearchResult["room"];
+  share_text?: string;
+}
+
 export interface GeoData {
   id: string;
   lat: number;
@@ -288,6 +300,7 @@ export const api = {
   facts: (id: string, key?: string) =>
     request<{ items: Fact[] }>(`/api/hotels/${encodeURIComponent(id)}/facts${key ? `?char_key=${key}` : ""}`),
   geo: (id: string) => request<GeoData>(`/api/hotels/${encodeURIComponent(id)}/geo`),
+  wish: (id: string, q: string) => request<WishData>(`/api/hotels/${encodeURIComponent(id)}/wish?q=${encodeURIComponent(q)}`),
   fit: (id: string, q: string) =>
     request<{ query: SearchResponse["query"]; result: SearchResult }>(`/api/hotels/${encodeURIComponent(id)}/fit?q=${encodeURIComponent(q)}`),
   view: (id: string, facade?: string, floor?: number) =>

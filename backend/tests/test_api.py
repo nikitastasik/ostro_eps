@@ -148,3 +148,20 @@ def test_view_rays_for_map(client):
     assert sum(int(x) for x in re.findall(r"(\d+)° —", v["rays_caption"])) == 120
     for b in v["blockers"]:
         assert len(b["polygon"]) >= 4 and b["deg"] >= 2 and "от окна" in b["label"]
+
+
+def test_booking_wish(client):
+    """Пожелание к бронированию: сторона и этаж из совета, просьбы, вопросы о неизвестном; тексты чистые."""
+    from app.nlp.textlint import anomalies
+
+    q = "тихий номер с видом на закат недалеко от моря"
+    top = client.post("/api/search", json={"query": q, "limit": 3}).json()["results"][0]
+    w = client.get(f"/api/hotels/{top['hotel']['id']}/wish", params={"q": q}).json()
+    assert w["text"].startswith("Здравствуйте!") and w["text"].endswith("Спасибо!")
+    assert top["room"]["facade_text"].split()[0][:5] in w["text"]
+    assert "закат" in w["text"] and w["method"] == "rules" and not anomalies(w["text"])
+    q2 = "выспаться после ночного перелёта: плотные шторы и тишина"
+    unknown = next(r for r in client.post("/api/search", json={"query": q2, "limit": 400}).json()["results"]
+                   if any(n["key"] == "blackout_curtains" and n["status"] == "unknown" for n in r["needs"]))
+    w2 = client.get(f"/api/hotels/{unknown['hotel']['id']}/wish", params={"q": q2}).json()
+    assert any("шторы" in x for x in w2["questions"]) and "?" in w2["text"]

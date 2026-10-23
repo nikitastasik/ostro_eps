@@ -368,6 +368,8 @@ def evaluate_hotel(h: Hotel, specs: dict, groups: dict[str, list[Criterion]], rv
                 "share": round(share_k[k], 3) if k in share_k else None, "contrib": w * e}
         if k == "quietness" and fv is not None:
             need["db"] = fv.get("night_db")
+        if k == "sunset_view" and fv is not None:
+            need["over_sea"] = bool(fv.get("over_sea_months"))
         if k in {"beach_access", "center_access"} and rv and rv.value:
             need["minutes"] = rv.value.get("minutes_to")
         needs.append(need)
