@@ -6,18 +6,32 @@ from app.models import Hotel, ResolvedValue
 from app.nlp.query_parser import Criterion
 
 SPECS = {s["key"]: normalize(s) for s in load_builtin()}
-FACADES = [{"key": "З", "length_m": 20.0}, {"key": "В", "length_m": 20.0}, {"key": "С", "length_m": 10.0},
-           {"key": "Ю", "length_m": 10.0}]
+FACADES = [
+    {"key": "З", "length_m": 20.0},
+    {"key": "В", "length_m": 20.0},
+    {"key": "С", "length_m": 10.0},
+    {"key": "Ю", "length_m": 10.0},
+]
 
 
 def _hotel(hid, sunset_floor_w, levels=10):
     h = Hotel(id=hid, name=hid, kind="hotel", lat=43.6, lon=39.7, building={"facades": FACADES, "levels": levels})
     by = {f["key"]: {"available": False, "months": [], "min_floor": None} for f in FACADES}
-    by["З"] = {"available": True, "months": list(range(1, 13)), "over_sea_months": list(range(1, 13)),
-               "min_floor": sunset_floor_w}
-    rv = ResolvedValue(hotel_id=hid, char_key="sunset_view", value={"available": True, "by_facade": by,
-                                                                     "min_floor": sunset_floor_w},
-                       confidence=0.8, sources=["geo"], status="ok", summary="закат")
+    by["З"] = {
+        "available": True,
+        "months": list(range(1, 13)),
+        "over_sea_months": list(range(1, 13)),
+        "min_floor": sunset_floor_w,
+    }
+    rv = ResolvedValue(
+        hotel_id=hid,
+        char_key="sunset_view",
+        value={"available": True, "by_facade": by, "min_floor": sunset_floor_w},
+        confidence=0.8,
+        sources=["geo"],
+        status="ok",
+        summary="закат",
+    )
     return h, {(hid, "sunset_view"): rv}
 
 
@@ -56,8 +70,11 @@ def test_statuses():
     assert need["status"] == "conditional" and "% номеров" in need["text"]
     h, rv = _hotel("all", 1)
     for f in FACADES:
-        rv[("all", "sunset_view")].value["by_facade"][f["key"]] = {"available": True, "months": list(range(1, 13)),
-                                                                    "min_floor": 1}
+        rv[("all", "sunset_view")].value["by_facade"][f["key"]] = {
+            "available": True,
+            "months": list(range(1, 13)),
+            "min_floor": 1,
+        }
     assert evaluate_hotel(h, SPECS, GROUPS, rv, {})["needs"][0]["status"] == "match"
     h, rv = _hotel("none", 1)
     rv[("none", "sunset_view")].value = None

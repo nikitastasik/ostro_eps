@@ -1,7 +1,7 @@
 import { Fragment, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../api";
-import { confColor, ErrorBox, KIND_RU, NeedIcon, Spinner, StatusBadge, useAsync, useCompare } from "../ui";
+import { confColor, ErrorBox, KIND_RU, NeedIcon, pressable, Spinner, StatusBadge, useAsync, useCompare } from "../ui";
 
 const GROUP_RU: Record<string, string> = {
   view: "Вид из окна", atmosphere: "Тишина и атмосфера", walk: "Пляж, центр, транспорт", around: "Что рядом",
@@ -103,7 +103,7 @@ export default function ComparePage() {
                   return (
                     <Fragment key={row.key}>
                       {g && <tr className="group"><td colSpan={d.hotels.length + 1}>{GROUP_RU[row.group] || row.group}</td></tr>}
-                      <tr className="clickable" onClick={() => setOpen({ ...open, [row.key]: !expanded })} title="Показать полный текст">
+                      <tr className="clickable" {...pressable(() => setOpen({ ...open, [row.key]: !expanded }))} aria-expanded={expanded} title="Показать полный текст">
                         <td>{row.title} <span className="tiny muted">{expanded ? "▴" : "▾"}</span></td>
                         {row.cells.map((c: any, i: number) => (
                           <td key={i} className={c.best ? "best" : ""}>

@@ -72,7 +72,7 @@ export default function RaysMap({ data, month }: { data: ViewData; month: number
     <div className="rays">
       <MapView className="map rays-map" lines={lines} polygons={polygons} focus={{ lat: w.lat, lon: w.lon, radius }}
         fitKey={`${data.facade}-${data.floor}`} drawKey={`${data.facade}-${data.floor}-${month}-${(data.blockers || []).map((b) => b.id).join(",")}`}
-        markers={[{ id: "window", lat: w.lat, lon: w.lon, color: "#13213b", label: "", size: 12, title: `Окно: ${data.facade}-сторона, ${data.floor}-й этаж` }]} />
+        markers={[{ id: "window", lat: w.lat, lon: w.lon, color: "#2d3137", label: "", size: 12, title: `Окно: ${data.facade}-сторона, ${data.floor}-й этаж` }]} />
       <div className="legend">
         {(Object.keys(KIND_COLOR) as RayKind[]).map((k) => <span key={k}><i style={{ background: KIND_COLOR[k] }} />{KIND_RU[k]}</span>)}
         <span><i style={{ background: SUN_COLOR }} />закат в выбранном месяце</span>

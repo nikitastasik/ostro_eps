@@ -78,7 +78,7 @@ export default function CharacteristicsPage() {
         <h2><Icon name="bolt" /> Добавить характеристику описанием</h2>
         <p className="small muted">Агент-компилятор подберёт инструменты из каталога (поиск объектов OSM, пешие маршруты с рельефом, видимость точки, климат) или, если в открытых данных этого нет, сделает вопрос отельеру.</p>
         <div className="row">
-          <input className="input" value={text} onChange={(e) => { setText(e.target.value); setCompiled(null); }} placeholder="Например: есть ли круглосуточная аптека в 10 минутах пешком" />
+          <input className="input" aria-label="Описание новой характеристики" value={text} onChange={(e) => { setText(e.target.value); setCompiled(null); }} placeholder="Например: есть ли круглосуточная аптека в 10 минутах пешком" />
           <button className="btn primary" disabled={!text.trim() || busy} onClick={compile}>{busy ? <Spinner /> : null} Скомпилировать</button>
         </div>
         <div className="row wrap mt-s">{EXAMPLES.map((e) => <button key={e} className="chip" onClick={() => { setText(e); setCompiled(null); }}>{e}</button>)}</div>

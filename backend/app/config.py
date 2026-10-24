@@ -41,6 +41,10 @@ class Settings:
     worker_enabled: bool = _bool("WORKER_ENABLED", True)
     hotelier_autoreply: bool = _bool("HOTELIER_AUTOREPLY", False)
     actualize_interval_min: float = float(os.environ.get("ACTUALIZE_INTERVAL_MIN", "30"))
+    # Изменяющие действия без входа: сброс демо, «состарить», стройка, ответ за отельера, новые характеристики,
+    # разбор противоречий, пересчёт агентами.
+    # Для показа жюри включены; на публичном стенде выключите, чтобы любой посетитель не мог их вызвать.
+    demo_actions: bool = _bool("DEMO_ACTIONS", True)
 
     # Демо-доступ в кабинет отельера
     hotelier_login: str = os.environ.get("HOTELIER_LOGIN", "hotelier")

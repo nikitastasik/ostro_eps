@@ -18,15 +18,34 @@ from ..tools.base import plural
 from . import arbiter
 
 ANIMALS_RU = {"dog": "собаки", "cat": "кошки", "bird": "птицы", "rodent": "грызуны"}
-SIDE_RU = {"sea": "на море", "courtyard": "во двор", "street": "на улицу", "mountains": "на горы", "park": "на парк",
-           "city": "на город", "pool": "на бассейн"}
-WINDOWS_RU = {"standard": "обычные стеклопакеты (≈−25 дБ)", "soundproof": "шумозащитные окна (≈−32 дБ)",
-              "triple": "тройные стеклопакеты (≈−36 дБ)"}
+SIDE_RU = {
+    "sea": "на море",
+    "courtyard": "во двор",
+    "street": "на улицу",
+    "mountains": "на горы",
+    "park": "на парк",
+    "city": "на город",
+    "pool": "на бассейн",
+}
+WINDOWS_RU = {
+    "standard": "обычные стеклопакеты (≈−25 дБ)",
+    "soundproof": "шумозащитные окна (≈−32 дБ)",
+    "triple": "тройные стеклопакеты (≈−36 дБ)",
+}
 WHEEL_RU = {"yes": "доступен для гостей на коляске", "limited": "доступен частично", "no": "не приспособлен для коляски"}
-VALUE_RU = {**ANIMALS_RU, **SIDE_RU, "night": "за сутки", "stay": "за проживание", "all": "во всех номерах",
-            "some": "в части номеров"}
-FIELD_VALUES_RU = {"windows": WINDOWS_RU, "wheelchair": WHEEL_RU,
-                   "quality": {"none": "не видно", "glimpse": "краешком", "partial": "частично", "wide": "широко"}}
+VALUE_RU = {
+    **ANIMALS_RU,
+    **SIDE_RU,
+    "night": "за сутки",
+    "stay": "за проживание",
+    "all": "во всех номерах",
+    "some": "в части номеров",
+}
+FIELD_VALUES_RU = {
+    "windows": WINDOWS_RU,
+    "wheelchair": WHEEL_RU,
+    "quality": {"none": "не видно", "glimpse": "краешком", "partial": "частично", "wide": "широко"},
+}
 
 
 def _yn(v) -> str:
@@ -137,13 +156,20 @@ def _hypothesis_text(spec: dict, hypothesis: str | None) -> str:
     return q
 
 
-def ask_hotelier(session: Session, hotel: Hotel, spec: dict, reason: str = "missing", hypothesis: str | None = None,
-                 run_id: int | None = None) -> tuple[Question, bool]:
+def ask_hotelier(
+    session: Session, hotel: Hotel, spec: dict, reason: str = "missing", hypothesis: str | None = None, run_id: int | None = None
+) -> tuple[Question, bool]:
     for q in session.scalars(select(Question).where(Question.hotel_id == hotel.id, Question.status == "open")):
         if spec["key"] in (q.char_keys or []):
             return q, False
-    q = Question(hotel_id=hotel.id, char_keys=[spec["key"]], text=_hypothesis_text(spec, hypothesis), reason=reason,
-                 context={"hypothesis": hypothesis, "fields": (spec.get("question") or {}).get("fields")}, run_id=run_id)
+    q = Question(
+        hotel_id=hotel.id,
+        char_keys=[spec["key"]],
+        text=_hypothesis_text(spec, hypothesis),
+        reason=reason,
+        context={"hypothesis": hypothesis, "fields": (spec.get("question") or {}).get("fields")},
+        run_id=run_id,
+    )
     session.add(q)
     session.flush()
     return q, True
@@ -162,6 +188,7 @@ def _side_text(side: str | None, facade: str | None) -> str:
 
 def fields_text(spec: dict, fields: dict) -> str:
     """Поля ответа по-русски: «максимальный вес — 10; доплата — 500; лучшая сторона — западная»."""
+
     def fmt(k, v):
         names = FIELD_VALUES_RU.get(k, VALUE_RU)
         if isinstance(v, bool):
@@ -177,6 +204,7 @@ def fields_text(spec: dict, fields: dict) -> str:
         if isinstance(v, float):
             return str(int(v)) if v.is_integer() else dec(v, 1)
         return str(names.get(v, v)) if isinstance(v, str) else str(v)
+
     return "; ".join(f"{_field_title(spec, k)} — {fmt(k, v)}" for k, v in fields.items())
 
 
@@ -184,23 +212,38 @@ def missing_text(spec: dict, missing: list[str] | None) -> str:
     return ", ".join(_field_title(spec, k) for k in missing or [])
 
 
-def ask_clarification(session: Session, hotel_id: str, spec: dict, primary: Fact, other: Fact, fld: dict, a, b,
-                      run_id: int | None = None) -> Question | None:
+def ask_clarification(
+    session: Session, hotel_id: str, spec: dict, primary: Fact, other: Fact, fld: dict, a, b, run_id: int | None = None
+) -> Question | None:
     for q in session.scalars(select(Question).where(Question.hotel_id == hotel_id, Question.status == "open")):
         if spec["key"] in (q.char_keys or []):
             return None
     base = (spec.get("question") or {}).get("text") or f"Уточните, пожалуйста: {spec['title'].lower()}?"
     src = arbiter.SOURCE_RU
     if other.source in {"hotelier", "hotelier_confirmed"}:
-        text = (f"По нашим данным ({src.get(primary.source, primary.source)}): {lower_first(primary.summary.rstrip('.'))}. "
-                f"В вашем ответе: {other.summary.replace('Со слов отельера: ', '').rstrip('.')}. "
-                f"Помогите разобраться — {base[0].lower() + base[1:]}")
+        text = (
+            f"По нашим данным ({src.get(primary.source, primary.source)}): {lower_first(primary.summary.rstrip('.'))}. "
+            f"В вашем ответе: {other.summary.replace('Со слов отельера: ', '').rstrip('.')}. "
+            f"Помогите разобраться — {base[0].lower() + base[1:]}"
+        )
     else:
-        text = (f"Источники расходятся: {src.get(primary.source, primary.source)} — {primary.summary.rstrip('.')}, "
-                f"{src.get(other.source, other.source)} — {other.summary.rstrip('.')}. {base}")
-    q = Question(hotel_id=hotel_id, char_keys=[spec["key"]], text=text, reason="conflict",
-                 context={"facts": [primary.id, other.id], "field": fld["field"], "values": [a, b],
-                          "fields": (spec.get("question") or {}).get("fields")}, run_id=run_id)
+        text = (
+            f"Источники расходятся: {src.get(primary.source, primary.source)} — {primary.summary.rstrip('.')}, "
+            f"{src.get(other.source, other.source)} — {other.summary.rstrip('.')}. {base}"
+        )
+    q = Question(
+        hotel_id=hotel_id,
+        char_keys=[spec["key"]],
+        text=text,
+        reason="conflict",
+        context={
+            "facts": [primary.id, other.id],
+            "field": fld["field"],
+            "values": [a, b],
+            "fields": (spec.get("question") or {}).get("fields"),
+        },
+        run_id=run_id,
+    )
     session.add(q)
     session.flush()
     return q
@@ -209,7 +252,9 @@ def ask_clarification(session: Session, hotel_id: str, spec: dict, primary: Fact
 def parse_with_llm(spec: dict, question: str, answer: str) -> dict | None:
     vf = {**spec.get("value_fields", {}), **spec.get("extra_fields", {})}
     fields = (spec.get("question") or {}).get("fields") or list(vf.keys())
-    schema = {f: {"type": vf[f].get("type"), "title": vf[f].get("title"), "values": vf[f].get("values")} for f in fields if f in vf}
+    schema = {
+        f: {"type": vf[f].get("type"), "title": vf[f].get("title"), "values": vf[f].get("values")} for f in fields if f in vf
+    }
     system = (
         "Ты агент, который раскладывает свободный ответ отельера по полям анкеты. Отвечай только JSON вида "
         '{"fields": {...}, "unclear": [...]}. Заполняй только то, что явно сказано в ответе; не додумывай. '
@@ -217,8 +262,9 @@ def parse_with_llm(spec: dict, question: str, answer: str) -> dict | None:
         "facade — одна из сторон С, СВ, В, ЮВ, Ю, ЮЗ, З, СЗ или sea/courtyard/street/mountains; "
         "months — массив номеров месяцев. Для categories верни массив объектов {name, side, facade, floors}."
     )
-    user = json.dumps({"characteristic": spec["title"], "question": question, "fields": schema, "answer": answer},
-                      ensure_ascii=False)
+    user = json.dumps(
+        {"characteristic": spec["title"], "question": question, "fields": schema, "answer": answer}, ensure_ascii=False
+    )
     res = llm.chat_json(system, user)
     if not res or not isinstance(res.get("fields"), dict):
         return None
@@ -227,8 +273,9 @@ def parse_with_llm(spec: dict, question: str, answer: str) -> dict | None:
     return {"fields": out, "missing": missing, "confidence": round(len(out) / max(1, len(schema)), 2)}
 
 
-def answer_question(session: Session, question: Question, text: str, answered_by: str = "hotelier",
-                    logger=None, use_llm: bool = True) -> dict:
+def answer_question(
+    session: Session, question: Question, text: str, answered_by: str = "hotelier", logger=None, use_llm: bool = True
+) -> dict:
     """Принимает ответ, раскладывает по полям, создаёт факты и пересобирает знание."""
     now = utcnow()
     question.answer_text = text
@@ -250,36 +297,65 @@ def answer_question(session: Session, question: Question, text: str, answered_by
             parsed = parse_answer(spec, text, fields)
             method = "rules"
         if logger:
-            logger.step("Интервьюер", "llm" if method == "llm" else "decision",
-                        f"Ответ разобран {'языковой моделью' if method == 'llm' else 'правилами'}: "
-                        f"{fields_text(spec, parsed['fields']) or 'ничего не извлечено'}"
-                        + (f"; в ответе нет: {', '.join(_field_title(spec, f) for f in parsed['missing'])}"
-                           if parsed["missing"] else ""),
-                        char_key=key, payload=parsed)
+            logger.step(
+                "Интервьюер",
+                "llm" if method == "llm" else "decision",
+                f"Ответ разобран {'языковой моделью' if method == 'llm' else 'правилами'}: "
+                f"{fields_text(spec, parsed['fields']) or 'ничего не извлечено'}"
+                + (f"; в ответе нет: {', '.join(_field_title(spec, f) for f in parsed['missing'])}" if parsed["missing"] else ""),
+                char_key=key,
+                payload=parsed,
+            )
         result[key] = {**parsed, "method": method}
         if not parsed["fields"]:
             continue
         source = "hotelier_confirmed" if answered_by == "hotelier_confirmed" else "hotelier"
         conf = 0.8 * (0.6 + 0.4 * parsed["confidence"]) * (1.0 if method == "rules" else 1.05)
-        fact = Fact(hotel_id=hotel.id, char_key=key, value=parsed["fields"], summary=render_summary(spec, parsed["fields"]),
-                    source=source, source_detail="ответ отельера в кабинете" + (" (симуляция)" if answered_by == "simulator" else ""),
-                    method="hotelier.answer", confidence=min(0.9, conf), observed_at=now,
-                    valid_until=now + dt.timedelta(days=int(spec.get("ttl_days", 365))),
-                    evidence={"question_id": question.id, "question": question.text, "answer": text, "parse_method": method,
-                              "missing": parsed["missing"], "answered_by": answered_by},
-                    run_id=getattr(logger, "run_id", None))
+        fact = Fact(
+            hotel_id=hotel.id,
+            char_key=key,
+            value=parsed["fields"],
+            summary=render_summary(spec, parsed["fields"]),
+            source=source,
+            source_detail="ответ отельера в кабинете" + (" (симуляция)" if answered_by == "simulator" else ""),
+            method="hotelier.answer",
+            confidence=min(0.9, conf),
+            observed_at=now,
+            valid_until=now + dt.timedelta(days=int(spec.get("ttl_days", 365))),
+            evidence={
+                "question_id": question.id,
+                "question": question.text,
+                "answer": text,
+                "parse_method": method,
+                "missing": parsed["missing"],
+                "answered_by": answered_by,
+            },
+            run_id=getattr(logger, "run_id", None),
+        )
         session.add(fact)
         session.flush()
-        for f in session.scalars(select(Fact).where(Fact.hotel_id == hotel.id, Fact.char_key == key, Fact.status == "active",
-                                                    Fact.source.in_(["hotelier", "hotelier_confirmed"]), Fact.id != fact.id)):
+        for f in session.scalars(
+            select(Fact).where(
+                Fact.hotel_id == hotel.id,
+                Fact.char_key == key,
+                Fact.status == "active",
+                Fact.source.in_(["hotelier", "hotelier_confirmed"]),
+                Fact.id != fact.id,
+            )
+        ):
             f.status = "superseded"
         session.flush()
-        rv = arbiter.resolve(session, hotel.id, spec, run_id=getattr(logger, "run_id", None), logger=logger,
-                             reason="hotelier_answer")
+        rv = arbiter.resolve(
+            session, hotel.id, spec, run_id=getattr(logger, "run_id", None), logger=logger, reason="hotelier_answer"
+        )
         if logger:
-            logger.step("Арбитр", "result", f"Итог «{spec['title']}»: "
-                        f"{arbiter.outcome_text(rv, arbiter.STATUS_RU.get(rv.status, rv.status))}",
-                        char_key=key, payload={"status": rv.status, "confidence": rv.confidence})
+            logger.step(
+                "Арбитр",
+                "result",
+                f"Итог «{spec['title']}»: " f"{arbiter.outcome_text(rv, arbiter.STATUS_RU.get(rv.status, rv.status))}",
+                char_key=key,
+                payload={"status": rv.status, "confidence": rv.confidence},
+            )
     question.parsed = result
     question.parse_method = next((v["method"] for v in result.values()), None)
     question.status = "answered"

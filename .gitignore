@@ -11,3 +11,7 @@ frontend/dist/
 venv/
 .ca-proxy.pem
 compose.proxy.local.yml
+
+# отчёты покрытия pytest-cov
+.coverage
+htmlcov/

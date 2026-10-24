@@ -23,16 +23,29 @@ from shapely.geometry import LineString, Point, Polygon
 
 from ..tools.base import plural, quote
 
-MERGE_M = 40.0     # ближе — один и тот же отель
-CONTOUR_M = 15.0   # «точка у контура здания»
+MERGE_M = 40.0  # ближе — один и тот же отель
+CONTOUR_M = 15.0  # «точка у контура здания»
 COMPLEX_M = 300.0  # корпуса одного комплекса
-STREET_M = 300.0   # подпись тёзки по улице не дальше этого
+STREET_M = 300.0  # подпись тёзки по улице не дальше этого
 MERGED_FIELDS = {"stars": "звёзды", "website": "сайт", "phone": "телефон", "address": "адрес"}
 FIELD_TAGS = {"stars", "website", "contact:website", "phone", "contact:phone", "addr:street", "addr:housenumber"}
-KIND_KEPT = {"точка": "оставлена точка", "здание": "оставлено здание", "контур": "оставлен контур",
-             "территория": "оставлена территория", "объект": "оставлен объект"}
-STREET_ABBR = [("улица", "ул."), ("переулок", "пер."), ("проспект", "просп."), ("набережная", "наб."),
-               ("бульвар", "бул."), ("площадь", "пл."), ("проезд", "пр."), ("шоссе", "ш.")]
+KIND_KEPT = {
+    "точка": "оставлена точка",
+    "здание": "оставлено здание",
+    "контур": "оставлен контур",
+    "территория": "оставлена территория",
+    "объект": "оставлен объект",
+}
+STREET_ABBR = [
+    ("улица", "ул."),
+    ("переулок", "пер."),
+    ("проспект", "просп."),
+    ("набережная", "наб."),
+    ("бульвар", "бул."),
+    ("площадь", "пл."),
+    ("проезд", "пр."),
+    ("шоссе", "ш."),
+]
 
 
 def norm_name(name: str | None) -> str:
@@ -114,9 +127,12 @@ class _DSU:
             self.p[max(ra, rb)] = min(ra, rb)
 
 
-def resolve(hotels: list[dict], building_poly: Callable[[int], Polygon | None],
-            building_levels: Callable[[int], int | None] | None = None,
-            streets: list[tuple[str, LineString]] | None = None) -> tuple[list[dict], list[dict]]:
+def resolve(
+    hotels: list[dict],
+    building_poly: Callable[[int], Polygon | None],
+    building_levels: Callable[[int], int | None] | None = None,
+    streets: list[tuple[str, LineString]] | None = None,
+) -> tuple[list[dict], list[dict]]:
     """Склейка, комплексы, подписи тёзок. Возвращает (отели, журнал решений)."""
     hotels = sorted((dict(h) for h in hotels), key=lambda h: h["id"])
     groups: dict[str, list[dict]] = {}
@@ -140,7 +156,7 @@ def resolve(hotels: list[dict], building_poly: Callable[[int], Polygon | None],
     dsu = _DSU([h["id"] for h in hotels])
     for g in groups.values():
         for i, a in enumerate(g):
-            for b in g[i + 1:]:
+            for b in g[i + 1 :]:
                 same_bld = a.get("building") is not None and a.get("building") == b.get("building")
                 # «точка в контуре здания»: только для объекта-точки, два разных здания рядом — это корпуса
                 pt_in = (a["osm"][:1] == "n" and near_contour(a, b)) or (b["osm"][:1] == "n" and near_contour(b, a))
@@ -166,13 +182,28 @@ def resolve(hotels: list[dict], building_poly: Callable[[int], Polygon | None],
                 tags[k] = other["tags"][k]
             keep["tags"] = tags
             moved += [k for k in extra if k not in FIELD_TAGS]
-            merged.append({"id": other["id"], "osm": other.get("osm"), "kind": osm_kind(other),
-                           "dist_m": round(_dist(keep, other)), "moved": moved})
+            merged.append(
+                {
+                    "id": other["id"],
+                    "osm": other.get("osm"),
+                    "kind": osm_kind(other),
+                    "dist_m": round(_dist(keep, other)),
+                    "moved": moved,
+                }
+            )
             merged.extend(other.get("merged_from") or [])
         if merged:
             keep["merged_from"] = merged
-            log.append({"type": "merge", "hotel_id": keep["id"], "name": keep["name"], "kind": osm_kind(keep),
-                        "osm": keep.get("osm"), "merged": merged})
+            log.append(
+                {
+                    "type": "merge",
+                    "hotel_id": keep["id"],
+                    "name": keep["name"],
+                    "kind": osm_kind(keep),
+                    "osm": keep.get("osm"),
+                    "merged": merged,
+                }
+            )
         kept.append(keep)
 
     # ---- 2. корпуса одного комплекса
@@ -186,7 +217,7 @@ def resolve(hotels: list[dict], building_poly: Callable[[int], Polygon | None],
     evidence: dict[str, list[str]] = {}
     for g in groups.values():
         for i, a in enumerate(g):
-            for b in g[i + 1:]:
+            for b in g[i + 1 :]:
                 d = _dist(a, b)
                 ok, same = tags_confirm(a, b)
                 if MERGE_M < d <= COMPLEX_M and ok:
@@ -198,8 +229,10 @@ def resolve(hotels: list[dict], building_poly: Callable[[int], Polygon | None],
     for cid, members in complexes.items():
         if len(members) < 2:
             continue
-        levels = {h["id"]: (building_levels(h["building"]) if building_levels and h.get("building") is not None else None)
-                  for h in members}
+        levels = {
+            h["id"]: (building_levels(h["building"]) if building_levels and h.get("building") is not None else None)
+            for h in members
+        }
         distinct = len({levels[h["id"]] for h in members}) == len(members) and None not in levels.values()
         members.sort(key=lambda h: (-(levels[h["id"]] or 0), h["id"]))
         for i, h in enumerate(members, 1):
@@ -210,9 +243,15 @@ def resolve(hotels: list[dict], building_poly: Callable[[int], Polygon | None],
             else:
                 label = f"корпус {i}"
             h["complex"] = {"id": f"cx-{cid}", "label": label}
-        log.append({"type": "complex", "complex_id": f"cx-{cid}", "name": members[0]["name"],
-                    "members": [{"id": h["id"], "label": h["complex"]["label"]} for h in members],
-                    "evidence": evidence.get(cid, [])})
+        log.append(
+            {
+                "type": "complex",
+                "complex_id": f"cx-{cid}",
+                "name": members[0]["name"],
+                "members": [{"id": h["id"], "label": h["complex"]["label"]} for h in members],
+                "evidence": evidence.get(cid, []),
+            }
+        )
 
     # ---- 3. подписи тёзкам: адрес или ближайшая улица
     for g in groups.values():
@@ -252,8 +291,12 @@ def describe(entry: dict) -> str:
         parts = [f"{m['kind']} {m['osm']} ({m['dist_m']} м)" for m in entry["merged"]]
         moved = sorted({x for m in entry["merged"] for x in m["moved"]})
         n = len(entry["merged"]) + 1
-        return (f"Склеены {n} {plural(n, 'объект', 'объекта', 'объектов')} OSM {quote(entry['name'])}: {entry['kind']} {entry['osm']} и "
-                + ", ".join(parts) + f"; {KIND_KEPT[entry['kind']]}" + (f", перенесено: {', '.join(moved)}" if moved else ""))
+        return (
+            f"Склеены {n} {plural(n, 'объект', 'объекта', 'объектов')} OSM {quote(entry['name'])}: {entry['kind']} {entry['osm']} и "
+            + ", ".join(parts)
+            + f"; {KIND_KEPT[entry['kind']]}"
+            + (f", перенесено: {', '.join(moved)}" if moved else "")
+        )
     if entry["type"] == "complex":
         labels = ", ".join(m["label"] for m in entry["members"])
         ev = ", ".join(entry["evidence"])

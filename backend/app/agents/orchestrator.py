@@ -19,7 +19,7 @@ import time
 import traceback
 
 import numpy as np
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from ..config import settings
@@ -64,18 +64,41 @@ class RunLogger:
         self.idx = session.scalar(select(func.count(AgentStep.id)).where(AgentStep.run_id == run.id)) or 0
         self.counts: dict[str, int] = {}
 
-    def step(self, agent: str, kind: str, message: str, char_key: str | None = None, payload: dict | None = None,
-             duration_ms: int | None = None) -> None:
+    def step(
+        self,
+        agent: str,
+        kind: str,
+        message: str,
+        char_key: str | None = None,
+        payload: dict | None = None,
+        duration_ms: int | None = None,
+    ) -> None:
         self.counts[kind] = self.counts.get(kind, 0) + 1
         if not self.store:
             return
-        self.session.add(AgentStep(run_id=self.run_id, idx=self.idx, agent=agent, kind=kind, char_key=char_key,
-                                   message=message[:4000], payload=_clean(payload or {}), duration_ms=duration_ms))
+        self.session.add(
+            AgentStep(
+                run_id=self.run_id,
+                idx=self.idx,
+                agent=agent,
+                kind=kind,
+                char_key=char_key,
+                message=message[:4000],
+                payload=_clean(payload or {}),
+                duration_ms=duration_ms,
+            )
+        )
         self.idx += 1
 
 
-def create_run(session: Session, kind: str, hotel_id: str | None = None, char_keys: list[str] | None = None,
-               trigger: str = "manual", params: dict | None = None) -> AgentRun:
+def create_run(
+    session: Session,
+    kind: str,
+    hotel_id: str | None = None,
+    char_keys: list[str] | None = None,
+    trigger: str = "manual",
+    params: dict | None = None,
+) -> AgentRun:
     run = AgentRun(kind=kind, hotel_id=hotel_id, char_keys=char_keys or [], trigger=trigger, params=_clean(params or {}))
     session.add(run)
     session.flush()
@@ -83,15 +106,20 @@ def create_run(session: Session, kind: str, hotel_id: str | None = None, char_ke
 
 
 # ----------------------------------------------------------------------------------------
-def collect_hotel(session: Session, hotel: Hotel, keys: list[str] | None, logger: RunLogger, reason: str,
-                  allow_questions: bool = True) -> dict:
+def collect_hotel(
+    session: Session, hotel: Hotel, keys: list[str] | None, logger: RunLogger, reason: str, allow_questions: bool = True
+) -> dict:
     specs = all_specs(session)
     order = [k for k in ordered_keys(specs) if keys is None or k in keys]
     if keys and "building_levels" not in keys and any(k in VIEW_KEYS for k in order):
         pass  # этажность берём из текущего знания
     ctx = HotelContext(session, hotel, get_region(), logger)
-    logger.step("Оркестратор", "plan", f"{quote(hotel.label)}: собираю {len(order)} {plural(len(order), 'характеристику', 'характеристики', 'характеристик')} в порядке зависимостей",
-                payload={"order": order})
+    logger.step(
+        "Оркестратор",
+        "plan",
+        f"{quote(hotel.label)}: собираю {len(order)} {plural(len(order), 'характеристику', 'характеристики', 'характеристик')} в порядке зависимостей",
+        payload={"order": order},
+    )
     stats = {"ok": 0, "conflict": 0, "asked": 0, "unknown": 0, "stale": 0}
     for key in order:
         rv = collector.collect(ctx, specs[key], logger.run_id, logger, reason=reason, allow_questions=allow_questions)
@@ -115,8 +143,13 @@ def _check_stop() -> None:
         raise Stopped("запуск остановлен сбросом демо")
 
 
-STATS_RU = {"ok": "готово", "conflict": "противоречий", "asked": "спросили отельера", "unknown": "нет данных",
-            "stale": "устарело"}
+STATS_RU = {
+    "ok": "готово",
+    "conflict": "противоречий",
+    "asked": "спросили отельера",
+    "unknown": "нет данных",
+    "stale": "устарело",
+}
 
 
 def stats_text(stats: dict) -> str:
@@ -166,19 +199,26 @@ def _run_answer(session: Session, run: AgentRun, logger: RunLogger) -> str:
         logger.step("Отельер", "result", f"Ответ: «{text}»", char_key=(q.char_keys or [None])[0])
     res = answer_question(session, q, text, answered_by=who, logger=logger)
     specs = all_specs(session, enabled_only=False)
-    return "; ".join(f"{specs[k]['title'] if k in specs else k}: {fields_text(specs[k], v['fields']) if k in specs and v['fields'] else 'не разобрано'}"
-                     for k, v in res.items())
+    return "; ".join(
+        f"{specs[k]['title'] if k in specs else k}: {fields_text(specs[k], v['fields']) if k in specs and v['fields'] else 'не разобрано'}"
+        for k, v in res.items()
+    )
 
 
 def _run_actualize(session: Session, run: AgentRun, logger: RunLogger) -> str:
     now = utcnow()
-    stale = list(session.scalars(select(ResolvedValue).where(ResolvedValue.valid_until.is_not(None),
-                                                             ResolvedValue.valid_until < now)))
+    stale = list(
+        session.scalars(select(ResolvedValue).where(ResolvedValue.valid_until.is_not(None), ResolvedValue.valid_until < now))
+    )
     by_hotel: dict[str, list[str]] = {}
     for rv in stale:
         by_hotel.setdefault(rv.hotel_id, []).append(rv.char_key)
-    logger.step("Арбитр", "plan", f"Найдено устаревших значений: {len(stale)} у {len(by_hotel)} {plural(len(by_hotel), 'отеля', 'отелей', 'отелей')}",
-                payload={"stale": len(stale)})
+    logger.step(
+        "Арбитр",
+        "plan",
+        f"Найдено устаревших значений: {len(stale)} у {len(by_hotel)} {plural(len(by_hotel), 'отеля', 'отелей', 'отелей')}",
+        payload={"stale": len(stale)},
+    )
     limit = int(run.params.get("limit", 50))
     n = 0
     for hotel_id, keys in list(by_hotel.items())[:limit]:
@@ -220,17 +260,23 @@ def _run_scenario(session: Session, run: AgentRun, logger: RunLogger) -> str:
         if d <= radius:
             hotels.append((d, h))
     hotels.sort(key=lambda t: t[0])
-    logger.step("Оркестратор", "plan", f"Изменение среды: {what}. "
-                f"Пересчитываю виды и шум для {len(hotels)} {plural(len(hotels), 'отеля', 'отелей', 'отелей')} в радиусе {radius:.0f} м",
-                payload={"hotels": [h.id for _, h in hotels]})
+    logger.step(
+        "Оркестратор",
+        "plan",
+        f"Изменение среды: {what}. "
+        f"Пересчитываю виды и шум для {len(hotels)} {plural(len(hotels), 'отеля', 'отелей', 'отелей')} в радиусе {radius:.0f} м",
+        payload={"hotels": [h.id for _, h in hotels]},
+    )
     changed = 0
     for d, h in hotels:
         _check_stop()
-        before = {k: (session.get(ResolvedValue, (h.id, k)).summary if session.get(ResolvedValue, (h.id, k)) else "")
-                  for k in VIEW_KEYS}
+        before = {
+            k: (session.get(ResolvedValue, (h.id, k)).summary if session.get(ResolvedValue, (h.id, k)) else "") for k in VIEW_KEYS
+        }
         quiet = RunLogger(session, run, store=False)
-        collect_hotel(session, h, VIEW_KEYS, quiet, reason="change:reset" if reset_ids else "change:building",
-                      allow_questions=False)
+        collect_hotel(
+            session, h, VIEW_KEYS, quiet, reason="change:reset" if reset_ids else "change:building", allow_questions=False
+        )
         diffs = []
         for k in VIEW_KEYS:
             rv = session.get(ResolvedValue, (h.id, k))
@@ -239,25 +285,46 @@ def _run_scenario(session: Session, run: AgentRun, logger: RunLogger) -> str:
         if diffs:
             changed += 1
             titles = [(get_spec(session, k) or {}).get("title", k) for k in diffs]
-            logger.step("Арбитр", "result", f"{quote(h.label)} ({d:.0f} м): изменилось — {', '.join(t[:1].lower() + t[1:] for t in titles)}",
-                        payload={"hotel_id": h.id, "keys": diffs})
+            logger.step(
+                "Арбитр",
+                "result",
+                f"{quote(h.label)} ({d:.0f} м): изменилось — {', '.join(t[:1].lower() + t[1:] for t in titles)}",
+                payload={"hotel_id": h.id, "keys": diffs},
+            )
         session.commit()
     return f"затронуто отелей: {len(hotels)}, изменилось знание у {changed}"
 
 
-HANDLERS = {"collect": _run_collect, "collect_all": _run_collect_all, "answer": _run_answer,
-            "actualize": _run_actualize, "scenario": _run_scenario}
+HANDLERS = {
+    "collect": _run_collect,
+    "collect_all": _run_collect_all,
+    "answer": _run_answer,
+    "actualize": _run_actualize,
+    "scenario": _run_scenario,
+}
+
+
+def claim_run(session: Session, run_id: int) -> bool:
+    """Атомарно переводит запуск из очереди в работу. Второй претендент (воркер или run_now) получает False."""
+    res = session.execute(
+        update(AgentRun).where(AgentRun.id == run_id, AgentRun.status == "queued").values(status="running", started_at=utcnow())
+    )
+    session.commit()
+    return res.rowcount == 1
 
 
 def execute_run(run_id: int) -> None:
+    """Выполняет запуск из очереди, если его ещё никто не взял."""
+    with SessionLocal() as session:
+        if not claim_run(session, run_id):
+            return
+    _execute_claimed(run_id)
+
+
+def _execute_claimed(run_id: int) -> None:
     session = SessionLocal()
     try:
         run = session.get(AgentRun, run_id)
-        if run is None or run.status not in {"queued", "running"}:
-            return
-        run.status = "running"
-        run.started_at = utcnow()
-        session.commit()
         logger = RunLogger(session, run)
         try:
             summary = HANDLERS[run.kind](session, run, logger)
@@ -273,7 +340,7 @@ def execute_run(run_id: int) -> None:
             session.rollback()
             run = session.get(AgentRun, run_id)
             run.status = "error"
-            run.error = f"{exc.__class__.__name__}: {exc}"
+            run.error = f"{exc.__class__.__name__}, подробности в логах"  # текст исключения — только в лог
             log.error("Запуск %s упал: %s", run_id, traceback.format_exc())
         run.finished_at = utcnow()
         session.commit()
@@ -281,11 +348,19 @@ def execute_run(run_id: int) -> None:
         session.close()
 
 
+def execute_now(session: Session, run: AgentRun) -> None:
+    """Выполняет только что созданный запуск в текущем потоке. Сразу «в работе»: воркер берёт только queued."""
+    run.status = "running"
+    run.started_at = utcnow()
+    session.commit()
+    _execute_claimed(run.id)
+    session.expire_all()
+
+
 def run_now(session: Session, kind: str, **kw) -> AgentRun:
     """Создаёт запуск и сразу выполняет его в текущем потоке (для коротких задач)."""
     run = create_run(session, kind, **kw)
-    session.commit()
-    execute_run(run.id)
+    execute_now(session, run)
     session.expire_all()
     return session.get(AgentRun, run.id)
 
@@ -299,6 +374,9 @@ class Worker(threading.Thread):
 
     def run(self) -> None:
         log.info("Воркер агентов запущен")
+        with SessionLocal() as s:  # запуски, прерванные остановкой процесса, — обратно в очередь
+            s.execute(update(AgentRun).where(AgentRun.status == "running").values(status="queued"))
+            s.commit()
         while not self.stop_event.is_set():
             try:
                 self.tick()
@@ -318,12 +396,21 @@ class Worker(threading.Thread):
             if run is None and settings.hotelier_autoreply:
                 q = session.scalars(select(Question).where(Question.status == "open").order_by(Question.id).limit(1)).first()
                 if q is not None and (utcnow() - q.created_at).total_seconds() > 20:
-                    r = create_run(session, "answer", hotel_id=q.hotel_id, char_keys=q.char_keys, trigger="autoreply",
-                                   params={"question_id": q.id})
+                    r = create_run(
+                        session,
+                        "answer",
+                        hotel_id=q.hotel_id,
+                        char_keys=q.char_keys,
+                        trigger="autoreply",
+                        params={"question_id": q.id},
+                    )
                     session.commit()
                     run_id = r.id
-            if run_id is None and settings.actualize_interval_min > 0 and \
-                    time.time() - self.last_actualize > settings.actualize_interval_min * 60:
+            if (
+                run_id is None
+                and settings.actualize_interval_min > 0
+                and time.time() - self.last_actualize > settings.actualize_interval_min * 60
+            ):
                 self.last_actualize = time.time()
                 r = create_run(session, "actualize", trigger="schedule", params={"limit": 20})
                 session.commit()

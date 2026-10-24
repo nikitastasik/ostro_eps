@@ -83,6 +83,7 @@ docker compose up --build
 | `WORKER_ENABLED` | `true` | фоновый воркер: очередь запусков агентов и актуализация |
 | `ACTUALIZE_INTERVAL_MIN` | `30` | как часто агенты ищут и перепроверяют устаревшие данные |
 | `HOTELIER_AUTOREPLY` | `false` | симулятор отельера сам отвечает на новые вопросы (демо) |
+| `DEMO_ACTIONS` | `true` | изменяющие действия без входа: сброс демо, «состарить» данные, стройка домов, ответ за отельера, новые характеристики, разбор противоречий, пересчёт агентами; на публичном стенде поставьте `false` (кабинет отельера работает по логину) |
 | `HOTELIER_LOGIN` / `HOTELIER_PASSWORD` | `hotelier` / `hotelier123` | демо-вход в кабинет отельера |
 | `SECRET_KEY` | `change-me-in-env` | подпись токенов кабинета |
 | `LOG_LEVEL` | `INFO` | уровень логов (stdout) |
@@ -254,8 +255,10 @@ scripts/        сборка данных, прогон агентов, оцен
 ## Разработка
 
 ```bash
+make install     # backend/.venv + frontend/node_modules для локальной разработки
 make test        # тесты бэкенда (pytest, SQLite)
-make lint        # ruff + проверка типов TypeScript
+make lint        # ruff (линтер и формат, конфиг ruff.toml) + проверка типов TypeScript
+make fmt         # автоформатирование Python
 make dev         # API на :8080 и Vite на :5173 с горячей перезагрузкой
 make eval        # метрики на размеченных выборках
 # на работающем приложении (нужен Playwright):
@@ -264,4 +267,4 @@ BASE=http://localhost:8080 node scripts/readme_shots.cjs   # скриншоты 
 BASE=http://localhost:8080 node scripts/demo_video.cjs     # скринкаст по docs/DEMO.md с подписями
 ```
 
-CI (`.github/workflows/ci.yml`): ruff, pytest, сборка фронтенда, `docker build` и `docker compose up` с проверкой `/health` и поиска.
+CI (`.github/workflows/ci.yml`): ruff (линтер и формат), pytest, сборка фронтенда, `docker build` и `docker compose up` с проверкой `/health` и поиска.

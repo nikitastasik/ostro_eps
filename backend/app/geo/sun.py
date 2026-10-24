@@ -28,9 +28,11 @@ def _sun_terms(jd: float) -> tuple[float, float]:
     m = 357.52911 + jc * (35999.05029 - 0.0001537 * jc)
     e = 0.016708634 - jc * (0.000042037 + 0.0000001267 * jc)
     mr = math.radians(m)
-    c = (math.sin(mr) * (1.914602 - jc * (0.004817 + 0.000014 * jc))
-         + math.sin(2 * mr) * (0.019993 - 0.000101 * jc)
-         + math.sin(3 * mr) * 0.000289)
+    c = (
+        math.sin(mr) * (1.914602 - jc * (0.004817 + 0.000014 * jc))
+        + math.sin(2 * mr) * (0.019993 - 0.000101 * jc)
+        + math.sin(3 * mr) * 0.000289
+    )
     true_long = l0 + c
     omega = 125.04 - 1934.136 * jc
     app_long = true_long - 0.00569 - 0.00478 * math.sin(math.radians(omega))
@@ -40,8 +42,11 @@ def _sun_terms(jd: float) -> tuple[float, float]:
     vy = math.tan(math.radians(obliq / 2)) ** 2
     l0r = math.radians(l0)
     eq_time = 4 * math.degrees(
-        vy * math.sin(2 * l0r) - 2 * e * math.sin(mr) + 4 * e * vy * math.sin(mr) * math.cos(2 * l0r)
-        - 0.5 * vy * vy * math.sin(4 * l0r) - 1.25 * e * e * math.sin(2 * mr)
+        vy * math.sin(2 * l0r)
+        - 2 * e * math.sin(mr)
+        + 4 * e * vy * math.sin(mr) * math.cos(2 * l0r)
+        - 0.5 * vy * vy * math.sin(4 * l0r)
+        - 1.25 * e * e * math.sin(2 * mr)
     )
     return decl, eq_time
 
@@ -73,8 +78,7 @@ def sunset_utc(day: dt.date, lat: float, lon: float) -> dt.datetime | None:
     noon = dt.datetime(day.year, day.month, day.day, 12, 0)
     decl, eq_time = _sun_terms(_julian_day(noon))
     latr, declr = math.radians(lat), math.radians(decl)
-    cos_ha = (math.cos(math.radians(90 - SUNSET_ELEVATION)) / (math.cos(latr) * math.cos(declr))
-              - math.tan(latr) * math.tan(declr))
+    cos_ha = math.cos(math.radians(90 - SUNSET_ELEVATION)) / (math.cos(latr) * math.cos(declr)) - math.tan(latr) * math.tan(declr)
     if not -1 <= cos_ha <= 1:
         return None
     ha = math.degrees(math.acos(cos_ha))
@@ -104,12 +108,14 @@ def monthly_sunsets(lat: float, lon: float, year: int = 2026, tz_hours: int = 3)
         _, az = solar_position(t_set, lat, lon)
         path = sunset_path(day, lat, lon)
         local = t_set + dt.timedelta(hours=tz_hours)
-        out.append({
-            "month": month,
-            "azimuth": round(az, 1),
-            "local_time": local.strftime("%H:%M"),
-            "path": [(m, round(el, 2), round(a, 2)) for m, el, a in path],
-        })
+        out.append(
+            {
+                "month": month,
+                "azimuth": round(az, 1),
+                "local_time": local.strftime("%H:%M"),
+                "path": [(m, round(el, 2), round(a, 2)) for m, el, a in path],
+            }
+        )
     return out
 
 

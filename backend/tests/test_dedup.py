@@ -9,8 +9,7 @@ LEVELS = {1: 9, 2: 5, 3: 4}
 
 
 def _h(i, osm, name, x, y, building=None, **kw):
-    return {"id": f"osm-{osm}", "osm": osm, "name": name, "x": x, "y": y, "building": building,
-            "tags": kw.pop("tags", {}), **kw}
+    return {"id": f"osm-{osm}", "osm": osm, "name": name, "x": x, "y": y, "building": building, "tags": kw.pop("tags", {}), **kw}
 
 
 def _resolve(hotels, streets=None):

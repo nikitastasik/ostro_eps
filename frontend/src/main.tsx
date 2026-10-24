@@ -1,3 +1,4 @@
+import "@fontsource-variable/onest";
 import "leaflet/dist/leaflet.css";
 import "./styles.css";
 import React from "react";

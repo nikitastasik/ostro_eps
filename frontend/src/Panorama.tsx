@@ -147,7 +147,7 @@ export default function Panorama({ hotelId, initialFacade, initialFloor }: { hot
             <g key={t}>
               <line x1={xx} x2={xx} y1={H} y2={H + 5} stroke="#9aa6b8" />
               <text x={t === -70 ? xx + 3 : t === 70 ? xx - 3 : xx} y={H + 18} fontSize={11}
-                textAnchor={t === -70 ? "start" : t === 70 ? "end" : "middle"} fill={isCompass ? "#13213b" : "#8a96a8"} fontWeight={isCompass ? 700 : 400}>
+                textAnchor={t === -70 ? "start" : t === 70 ? "end" : "middle"} fill={isCompass ? "#2d3137" : "#8a96a8"} fontWeight={isCompass ? 700 : 400}>
                 {isCompass ? COMPASS[ci] : `${Math.round(az)}°`}
               </text>
             </g>

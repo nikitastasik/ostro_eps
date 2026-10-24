@@ -1,0 +1,10 @@
+# Общий конфиг ruff для backend/ и scripts/ — одинаковый результат из любой папки
+line-length = 130
+target-version = "py312"
+
+[lint]
+select = ["E", "F", "W", "I", "B"]
+ignore = ["E501", "B008", "B905"]
+
+[lint.isort]
+known-first-party = ["app"]

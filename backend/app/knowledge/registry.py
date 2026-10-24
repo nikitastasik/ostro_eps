@@ -77,8 +77,18 @@ def sync_builtin(session: Session) -> int:
     for spec in load_builtin():
         row = session.get(Characteristic, spec["key"])
         if row is None:
-            session.add(Characteristic(key=spec["key"], title=spec["title"], group=spec["group"], scope=spec["scope"],
-                                       description=spec["description"], spec=spec, origin="builtin", compiled_by="yaml"))
+            session.add(
+                Characteristic(
+                    key=spec["key"],
+                    title=spec["title"],
+                    group=spec["group"],
+                    scope=spec["scope"],
+                    description=spec["description"],
+                    spec=spec,
+                    origin="builtin",
+                    compiled_by="yaml",
+                )
+            )
             n += 1
         elif row.origin == "builtin" and row.spec != spec:
             row.spec = spec
@@ -105,9 +115,17 @@ def all_specs(session: Session, enabled_only: bool = True) -> dict[str, dict]:
     with _lock:
         if _cache is None:
             rows = session.scalars(select(Characteristic)).all()
-            _cache = {r.key: {**normalize(r.spec), "_enabled": r.enabled, "_origin": r.origin, "_version": r.version,
-                              "_compiled_by": r.compiled_by, "_created_from_text": r.created_from_text}
-                      for r in rows}
+            _cache = {
+                r.key: {
+                    **normalize(r.spec),
+                    "_enabled": r.enabled,
+                    "_origin": r.origin,
+                    "_version": r.version,
+                    "_compiled_by": r.compiled_by,
+                    "_created_from_text": r.created_from_text,
+                }
+                for r in rows
+            }
         specs = _cache
     if enabled_only:
         return {k: v for k, v in specs.items() if v.get("_enabled", True)}

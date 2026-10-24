@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { KeyboardEvent, useCallback, useEffect, useRef, useState } from "react";
 import type { Need } from "./api";
 
 // ---------------------------------------------------------------- иконки (простые штриховые SVG)
@@ -57,12 +57,20 @@ const STATUS_RU: Record<string, string> = {
   ok: "готово", conflict: "противоречие", stale: "устарело", unknown: "нет данных", asked: "ждём отельера",
 };
 
+/** Кликабельная строка или блок, доступные с клавиатуры: Tab, Enter, пробел. */
+export function pressable(fn: () => void) {
+  return {
+    role: "button", tabIndex: 0, onClick: fn,
+    onKeyDown: (e: KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fn(); } },
+  } as const;
+}
+
 export function StatusBadge({ status }: { status: string }) {
   return <span className={`badge ${status}`}>{STATUS_RU[status] || status}</span>;
 }
 
 export function confColor(c: number) {
-  return c >= 0.7 ? "#14a05a" : c >= 0.45 ? "#e38b00" : "#e0464b";
+  return c >= 0.45 ? "#696d73" : "#d0353b";
 }
 
 export const NEED_STATUS: Record<string, { icon: string; label: string }> = {
@@ -76,7 +84,7 @@ export const NEED_STATUS: Record<string, { icon: string; label: string }> = {
 /** Значок статуса пожелания: ✓ / ✓ с условием / ~ / ✕ / ?. */
 export function NeedIcon({ status }: { status: string }) {
   const s = NEED_STATUS[status] || NEED_STATUS.unknown;
-  return <span className={`ic ${status}`} title={s.label}>{s.icon}</span>;
+  return <span className={`ic ${status}`} title={s.label} role="img" aria-label={s.label}>{s.icon}</span>;
 }
 
 /** Пожелания гостя с итогом по каждому: значок статуса, объяснение, источники и уверенность. */
@@ -92,7 +100,7 @@ export function NeedsList({ needs }: { needs: Need[] }) {
           </div>
           <div className="row" style={{ gap: 6 }}>
             <Sources sources={n.sources} />
-            {n.status !== "unknown" && <Confidence value={n.confidence} label={false} />}
+            {n.status !== "unknown" && <Confidence value={n.confidence} />}
           </div>
         </div>
       ))}
@@ -102,8 +110,9 @@ export function NeedsList({ needs }: { needs: Need[] }) {
 
 export function Confidence({ value, label = true }: { value: number; label?: boolean }) {
   return (
-    <span className="conf" title={`Уверенность ${Math.round(value * 100)}%`}>
-      <span className="bar"><i style={{ width: `${Math.round(value * 100)}%`, background: confColor(value) }} /></span>
+    <span className="conf" title={`Уверенность в значении ${Math.round(value * 100)}%`}>
+      <span className="sr-only">уверенность </span>
+      <span className="bar" aria-hidden="true"><i style={{ width: `${Math.round(value * 100)}%`, background: confColor(value) }} /></span>
       {label && <span>{Math.round(value * 100)}%</span>}
     </span>
   );
@@ -187,18 +196,18 @@ export const KIND_RU: Record<string, string> = {
 };
 
 export function scoreColor(s: number) {
-  if (s >= 75) return "#14a05a";
-  if (s >= 55) return "#6aa72f";
-  if (s >= 40) return "#e38b00";
-  return "#e0464b";
+  if (s >= 75) return "#1c7f36";
+  if (s >= 55) return "#3f7f1a";
+  if (s >= 40) return "#a85f00";
+  return "#d0353b";
 }
 
 export function ScoreRing({ score }: { score: number }) {
   const c = scoreColor(score);
   return (
-    <div className="score" style={{ background: `conic-gradient(${c} ${score * 3.6}deg, #e8edf4 0deg)` }} title="Насколько отель подходит под запрос с учётом уверенности данных">
-      <div style={{ position: "absolute", inset: 6, borderRadius: "50%", background: "white" }} />
-      <span>{score}</span>
+    <div className="score" style={{ background: c }} title="Насколько отель подходит под запрос с учётом уверенности данных"
+      role="img" aria-label={`Совпадение с запросом ${score}%`}>
+      {score}%
     </div>
   );
 }

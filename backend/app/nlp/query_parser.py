@@ -44,8 +44,13 @@ class ParsedQuery:
     parser: str = "rules"
 
     def as_dict(self) -> dict:
-        return {"text": self.text, "criteria": [c.as_dict() for c in self.criteria], "months": self.months,
-                "unmatched": self.unmatched, "parser": self.parser}
+        return {
+            "text": self.text,
+            "criteria": [c.as_dict() for c in self.criteria],
+            "months": self.months,
+            "unmatched": self.unmatched,
+            "parser": self.parser,
+        }
 
 
 NEGATIONS = {"без", "не", "нет", "никаких", "кроме"}
@@ -59,7 +64,7 @@ def _match_any(toks: list[str], phrases: list[str]) -> str | None:
         pos = find_phrase(toks, pt)
         if pos is None:
             continue
-        negated = pt[0] not in NEGATIONS and any(t in NEGATIONS for t in toks[max(0, pos[0] - 2):pos[0]])
+        negated = pt[0] not in NEGATIONS and any(t in NEGATIONS for t in toks[max(0, pos[0] - 2) : pos[0]])
         if negated:
             continue
         if best is None or len(p) > len(best):
@@ -80,8 +85,11 @@ def parse_query(text: str, specs: dict[str, dict]) -> ParsedQuery:
         for key, spec in specs.items():
             srch = spec.get("search") or {}
             base_hit = _match_any(toks, srch.get("phrases", []))
-            if not base_hit and _match_any(toks, srch.get("numeric_anchors", [])) and any(
-                    number_before(clause, UNITS[n["unit"]]) is not None for n in srch.get("numeric", [])):
+            if (
+                not base_hit
+                and _match_any(toks, srch.get("numeric_anchors", []))
+                and any(number_before(clause, UNITS[n["unit"]]) is not None for n in srch.get("numeric", []))
+            ):
                 base_hit = clause
             variant_hits = []
             for var in srch.get("variants", []):
@@ -96,14 +104,34 @@ def parse_query(text: str, specs: dict[str, dict]) -> ParsedQuery:
             base_label = srch.get("label") or spec["title"]
             if base_hit and not any(v.get("replace_base") for v, _ in variant_hits):
                 for c in srch.get("criteria", []):
-                    crits.append(Criterion(key=key, field=c["field"], op=c["op"], value=c["value"], soft=c.get("soft"),
-                                           label=base_label, source_text=base_hit, month_field=month_field))
+                    crits.append(
+                        Criterion(
+                            key=key,
+                            field=c["field"],
+                            op=c["op"],
+                            value=c["value"],
+                            soft=c.get("soft"),
+                            label=base_label,
+                            source_text=base_hit,
+                            month_field=month_field,
+                        )
+                    )
             for var, hit in variant_hits:
                 vm = var.get("month_field", month_field)
                 for c in var.get("criteria", []):
                     crits = [x for x in crits if x.field != c["field"]]
-                    crits.append(Criterion(key=key, field=c["field"], op=c["op"], value=c["value"], soft=c.get("soft"),
-                                           label=var.get("label") or base_label, source_text=hit, month_field=vm))
+                    crits.append(
+                        Criterion(
+                            key=key,
+                            field=c["field"],
+                            op=c["op"],
+                            value=c["value"],
+                            soft=c.get("soft"),
+                            label=var.get("label") or base_label,
+                            source_text=hit,
+                            month_field=vm,
+                        )
+                    )
             # числа в той же фразе: «до моря 5 минут», «не дальше 300 м»
             for num in srch.get("numeric", []):
                 unit = num["unit"]
@@ -113,8 +141,17 @@ def parse_query(text: str, specs: dict[str, dict]) -> ParsedQuery:
                 if unit == "km":
                     val *= 1000
                 crits = [x for x in crits if x.field != num["field"]]
-                crits.append(Criterion(key=key, field=num["field"], op=num["op"], value=val, soft=val * 0.5,
-                                       label=srch.get("label") or spec["title"], source_text=clause))
+                crits.append(
+                    Criterion(
+                        key=key,
+                        field=num["field"],
+                        op=num["op"],
+                        value=val,
+                        soft=val * 0.5,
+                        label=srch.get("label") or spec["title"],
+                        source_text=clause,
+                    )
+                )
             for c in crits:
                 c.weight = weight
                 c.required = required
@@ -151,9 +188,19 @@ def criteria_from_dicts(items: list[dict], specs: dict[str, dict]) -> list[Crite
         if op not in ops:
             continue
         month = it.get("month")
-        out.append(Criterion(key=key, field=fld, op=op, value=it.get("value"), soft=it.get("soft"),
-                             weight=float(it.get("weight", 1.0) or 1.0), required=bool(it.get("required", False)),
-                             month=int(month) if month else None,
-                             month_field=it.get("month_field") or (spec.get("search") or {}).get("month_field"),
-                             label=it.get("label") or spec["title"], source_text=it.get("source_text", "")))
+        out.append(
+            Criterion(
+                key=key,
+                field=fld,
+                op=op,
+                value=it.get("value"),
+                soft=it.get("soft"),
+                weight=float(it.get("weight", 1.0) or 1.0),
+                required=bool(it.get("required", False)),
+                month=int(month) if month else None,
+                month_field=it.get("month_field") or (spec.get("search") or {}).get("month_field"),
+                label=it.get("label") or spec["title"],
+                source_text=it.get("source_text", ""),
+            )
+        )
     return out

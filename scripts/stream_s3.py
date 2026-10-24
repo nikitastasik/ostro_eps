@@ -4,6 +4,7 @@
   python scripts/stream_s3.py https://osm-pds.s3.amazonaws.com/2026/planet-261019.osm.pbf \
     | osmium extract -b 39.0,43.35,40.45,44.15 --strategy simple -F pbf - -o sochi.osm.pbf
 """
+
 import sys
 import time
 import urllib.request
@@ -38,7 +39,7 @@ def main() -> None:
                     break
             except Exception as exc:  # noqa: BLE001
                 sys.stderr.write(f"retry at {pos}: {exc}\n")
-                time.sleep(2 ** attempt)
+                time.sleep(2**attempt)
         else:
             raise SystemExit(f"failed at {pos}")
         sys.stderr.write(f"{pos / size * 100:.1f}%\n")

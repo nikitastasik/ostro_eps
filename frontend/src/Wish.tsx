@@ -31,7 +31,7 @@ function WishModal({ hotelId, q, onClose }: { hotelId: string; q: string; onClos
   }, [onClose]);
   return (
     <div className="modal-back" onClick={onClose}>
-      <div className="modal card" role="dialog" aria-label="Пожелание к бронированию" onClick={(e) => e.stopPropagation()}>
+      <div className="modal card" role="dialog" aria-modal="true" aria-label="Пожелание к бронированию" onClick={(e) => e.stopPropagation()}>
         <div className="row between">
           <h2 style={{ margin: 0 }}>Пожелание к бронированию</h2>
           <button className="btn small" onClick={onClose}><Icon name="x" size={14} /> Закрыть</button>
@@ -71,12 +71,12 @@ function WishModal({ hotelId, q, onClose }: { hotelId: string; q: string; onClos
   );
 }
 
-export function WishButton({ hotelId, q, small }: { hotelId: string; q: string; small?: boolean }) {
+export function WishButton({ hotelId, q, small, primary }: { hotelId: string; q: string; small?: boolean; primary?: boolean }) {
   const [open, setOpen] = useState(false);
   if (!q) return null;
   return (
     <>
-      <button className={`btn ${small ? "small" : ""}`} onClick={() => setOpen(true)} title="Готовый текст для отеля: какой номер просить и почему">
+      <button className={`btn ${small ? "small" : ""} ${primary ? "primary" : ""}`} onClick={() => setOpen(true)} title="Готовый текст для отеля: какой номер просить и почему">
         <Icon name="chat" size={small ? 14 : 16} /> Пожелание к бронированию
       </button>
       {open && <WishModal hotelId={hotelId} q={q} onClose={() => setOpen(false)} />}

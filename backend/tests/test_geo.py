@@ -59,9 +59,12 @@ class FakeRegion:
         sea_far[far_y >= -200, :] = 0
         far[far_y >= -200, :] = 10
         self.rasters = {
-            "bld_h": Grid(bld_h, x0, y0, res), "bld_id": Grid(bld_id, x0, y0, res),
-            "veg_h": Grid(np.zeros((n, n), dtype=np.uint8), x0, y0, res), "sea": Grid(sea, x0, y0, res),
-            "dtm_near": Grid(dtm, -2000, -2000, 25), "dem_far": Grid(far, -60000, -60000, 600),
+            "bld_h": Grid(bld_h, x0, y0, res),
+            "bld_id": Grid(bld_id, x0, y0, res),
+            "veg_h": Grid(np.zeros((n, n), dtype=np.uint8), x0, y0, res),
+            "sea": Grid(sea, x0, y0, res),
+            "dtm_near": Grid(dtm, -2000, -2000, 25),
+            "dem_far": Grid(far, -60000, -60000, 600),
             "sea_far": Grid(sea_far, -60000, -60000, 600),
         }
 

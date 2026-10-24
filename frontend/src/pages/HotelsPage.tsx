@@ -24,7 +24,7 @@ export default function HotelsPage() {
           <p className="muted">Все объекты размещения центрального Сочи из OpenStreetMap. Значки — то, что агенты узнали сверх карточки.</p>
         </div>
         <div className="row">
-          <input className="input" placeholder="Название или адрес" value={q} onChange={(e) => setQ(e.target.value)} style={{ width: 240 }} />
+          <input className="input" aria-label="Найти отель по названию или адресу" placeholder="Название или адрес" value={q} onChange={(e) => setQ(e.target.value)} style={{ width: 240 }} />
           <select className="select" value={kind} onChange={(e) => setKind(e.target.value)} style={{ width: 170 }}>
             <option value="">Все типы</option>
             {Object.entries(KIND_RU).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -57,7 +57,7 @@ export default function HotelsPage() {
         </div>
         <div className="sticky">
           <MapView fitKey={`${kind}${onlySea}${items.length}`} markers={items.map((h) => ({
-            id: h.id, lat: h.lat, lon: h.lon, color: h.badges.sea_view ? "#0a6cff" : "#7a8799", label: "", title: h.name, highlight: hl === h.id,
+            id: h.id, lat: h.lat, lon: h.lon, color: h.badges.sea_view ? "#0e41d2" : "#7a8799", label: "", title: h.name, highlight: hl === h.id,
           }))} onMarkerClick={(id) => nav(`/hotel/${encodeURIComponent(id)}`)} />
           <p className="tiny muted mt-s">Синие — с видом на море хотя бы с одного этажа (расчёт по рельефу и застройке).</p>
         </div>

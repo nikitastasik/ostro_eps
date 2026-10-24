@@ -19,9 +19,14 @@ from ..models import Change, Conflict, Fact, Question, ResolvedValue, utcnow
 from ..nlp.ru import dec
 
 SOURCE_RU = {
-    "geo": "расчёт по геоданным", "osm": "OpenStreetMap", "osm_estimate": "оценка по соседним зданиям",
-    "default": "предположение по типу здания", "climate": "климатические данные NOAA", "hotelier": "отельер",
-    "hotelier_confirmed": "подтверждено отельером", "moderator": "модератор",
+    "geo": "расчёт по геоданным",
+    "osm": "OpenStreetMap",
+    "osm_estimate": "оценка по соседним зданиям",
+    "default": "предположение по типу здания",
+    "climate": "климатические данные NOAA",
+    "hotelier": "отельер",
+    "hotelier_confirmed": "подтверждено отельером",
+    "moderator": "модератор",
 }
 STATUS_RU = {"ok": "готово", "conflict": "противоречие", "stale": "устарело", "unknown": "нет данных", "asked": "ждём отельера"}
 STALE_FACTOR = 0.6
@@ -31,8 +36,9 @@ def outcome_text(rv: ResolvedValue, status_ru: str) -> str:
     """Итог для журнала: «Море видно … [готово, уверенность 0,82]»; без значения — почему его нет."""
     if rv.summary:
         return f"{rv.summary} [{status_ru}, уверенность {dec(rv.confidence, 2)}]"
-    return {"asked": "значения пока нет — ждём ответа отельера",
-            "unknown": "значения нет — в открытых данных не нашлось"}.get(rv.status, f"значения нет [{status_ru}]")
+    return {"asked": "значения пока нет — ждём ответа отельера", "unknown": "значения нет — в открытых данных не нашлось"}.get(
+        rv.status, f"значения нет [{status_ru}]"
+    )
 
 
 def _get(value: dict | None, path: str):
@@ -68,12 +74,12 @@ def effective_confidence(f: Fact, now: dt.datetime) -> float:
     return f.confidence * (STALE_FACTOR if f.valid_until and f.valid_until < now else 1.0)
 
 
-def resolve(session: Session, hotel_id: str, spec: dict, run_id: int | None = None, logger=None,
-            reason: str = "") -> ResolvedValue:
+def resolve(
+    session: Session, hotel_id: str, spec: dict, run_id: int | None = None, logger=None, reason: str = ""
+) -> ResolvedValue:
     key = spec["key"]
     now = utcnow()
-    facts = list(session.scalars(select(Fact).where(Fact.hotel_id == hotel_id, Fact.char_key == key,
-                                                    Fact.status == "active")))
+    facts = list(session.scalars(select(Fact).where(Fact.hotel_id == hotel_id, Fact.char_key == key, Fact.status == "active")))
     rv = session.get(ResolvedValue, (hotel_id, key))
     old_summary = rv.summary if rv is not None else ""
     old_had_value = rv is not None and rv.value is not None
@@ -137,22 +143,29 @@ def resolve(session: Session, hotel_id: str, spec: dict, run_id: int | None = No
     open_conflicts = 0
     active_ids = {f.id for f in facts}
     # противоречия, которые больше не актуальны (факт заменён новым), закрываем
-    for c in session.scalars(select(Conflict).where(Conflict.hotel_id == hotel_id, Conflict.char_key == key,
-                                                    Conflict.status == "open")):
+    for c in session.scalars(
+        select(Conflict).where(Conflict.hotel_id == hotel_id, Conflict.char_key == key, Conflict.status == "open")
+    ):
         still = any(sorted(c.fact_ids) == sorted([primary.id, d[0].id]) and c.field == d[1]["field"] for d in disagreements)
         if not still:
             c.status = "resolved"
-            c.resolution = ("источники согласованы после обновления данных" if set(c.fact_ids) <= active_ids
-                            else "один из фактов заменён более свежим — противоречие снято")
+            c.resolution = (
+                "источники согласованы после обновления данных"
+                if set(c.fact_ids) <= active_ids
+                else "один из фактов заменён более свежим — противоречие снято"
+            )
             c.resolved_by = "arbiter"
             c.resolved_at = now
     for other, fld, a, b in disagreements:
         title = spec.get("value_fields", {}).get(fld["field"], {}).get("title", fld["field"])
-        desc = (f"{title}: {SOURCE_RU.get(primary.source, primary.source)} — {_fmt(a)}, "
-                f"{SOURCE_RU.get(other.source, other.source)} — {_fmt(b)}")
+        desc = (
+            f"{title}: {SOURCE_RU.get(primary.source, primary.source)} — {_fmt(a)}, "
+            f"{SOURCE_RU.get(other.source, other.source)} — {_fmt(b)}"
+        )
         pair = sorted([primary.id, other.id])
-        existing = session.scalars(select(Conflict).where(Conflict.hotel_id == hotel_id, Conflict.char_key == key,
-                                                          Conflict.field == fld["field"])).all()
+        existing = session.scalars(
+            select(Conflict).where(Conflict.hotel_id == hotel_id, Conflict.char_key == key, Conflict.field == fld["field"])
+        ).all()
         prev = next((c for c in existing if sorted(c.fact_ids) == pair), None)
         if prev is not None:
             open_conflicts += prev.status == "open"
@@ -166,29 +179,49 @@ def resolve(session: Session, hotel_id: str, spec: dict, run_id: int | None = No
             c.status = "resolved"
             c.resolved_by = "arbiter"
             c.resolved_at = now
-            c.resolution = f"по приоритету источников принят ответ отельера; {SOURCE_RU.get(other.source, other.source)} расходится"
+            c.resolution = (
+                f"по приоритету источников принят ответ отельера; {SOURCE_RU.get(other.source, other.source)} расходится"
+            )
             if logger:
-                logger.step("Арбитр", "conflict", f"Расхождение ({desc}) — принят ответ отельера как более авторитетный",
-                            char_key=key, payload={"conflict_id": c.id, "facts": pair})
+                logger.step(
+                    "Арбитр",
+                    "conflict",
+                    f"Расхождение ({desc}) — принят ответ отельера как более авторитетный",
+                    char_key=key,
+                    payload={"conflict_id": c.id, "facts": pair},
+                )
             continue
         open_conflicts += 1
         if logger:
-            logger.step("Арбитр", "conflict", f"Противоречие источников — {desc}", char_key=key,
-                        payload={"conflict_id": c.id, "facts": pair})
+            logger.step(
+                "Арбитр",
+                "conflict",
+                f"Противоречие источников — {desc}",
+                char_key=key,
+                payload={"conflict_id": c.id, "facts": pair},
+            )
         from .interviewer import ask_clarification
 
         q = ask_clarification(session, hotel_id, spec, primary, other, fld, a, b, run_id=run_id)
         if q is not None:
             c.question_id = q.id
             if logger:
-                logger.step("Интервьюер", "question", f"Уточняющий вопрос отельеру: «{q.text}»", char_key=key,
-                            payload={"question_id": q.id})
+                logger.step(
+                    "Интервьюер",
+                    "question",
+                    f"Уточняющий вопрос отельеру: «{q.text}»",
+                    char_key=key,
+                    payload={"question_id": q.id},
+                )
     if open_conflicts:
         conf = p_conf * 0.75
         status = "conflict"
         policy = spec.get("conflict", {}).get("policy", "priority")
-        policy_ru = ("расчёт по геоданным важнее самоотчёта, пока он не опровергнут" if policy == "computed_wins"
-                     else "побеждает более авторитетный и свежий источник")
+        policy_ru = (
+            "расчёт по геоданным важнее самоотчёта, пока он не опровергнут"
+            if policy == "computed_wins"
+            else "побеждает более авторитетный и свежий источник"
+        )
         expl.append(f"есть противоречие ({policy_ru}); уверенность снижена до выяснения")
     elif disagreements:
         expl.append("расхождение с менее авторитетным источником разобрано автоматически")
@@ -206,8 +239,12 @@ def resolve(session: Session, hotel_id: str, spec: dict, run_id: int | None = No
     merged.update({k: v for k, v in (primary.value or {}).items() if v is not None})
     disagreeing_ids = {d[0].id for d in disagreements}
     for f in ordered[1:]:
-        if (f.source in {"hotelier", "hotelier_confirmed"} and f.id not in disagreeing_ids and f.summary
-                and f.summary != primary.summary):
+        if (
+            f.source in {"hotelier", "hotelier_confirmed"}
+            and f.id not in disagreeing_ids
+            and f.summary
+            and f.summary != primary.summary
+        ):
             extra_summaries.append(f.summary)
     summary = primary.summary
     if extra_summaries:
@@ -226,14 +263,23 @@ def resolve(session: Session, hotel_id: str, spec: dict, run_id: int | None = No
     session.flush()
 
     if old_had_value and old_summary and old_summary != rv.summary and reason:
-        session.add(Change(hotel_id=hotel_id, char_key=key, old_summary=old_summary, new_summary=rv.summary,
-                           reason=reason, run_id=run_id))
+        session.add(
+            Change(hotel_id=hotel_id, char_key=key, old_summary=old_summary, new_summary=rv.summary, reason=reason, run_id=run_id)
+        )
     return rv
 
 
 def supersede_previous(session: Session, hotel_id: str, key: str, source: str, method: str, keep_id: int) -> None:
-    for f in session.scalars(select(Fact).where(Fact.hotel_id == hotel_id, Fact.char_key == key, Fact.status == "active",
-                                                Fact.source == source, Fact.method == method, Fact.id != keep_id)):
+    for f in session.scalars(
+        select(Fact).where(
+            Fact.hotel_id == hotel_id,
+            Fact.char_key == key,
+            Fact.status == "active",
+            Fact.source == source,
+            Fact.method == method,
+            Fact.id != keep_id,
+        )
+    ):
         f.status = "superseded"
     session.flush()  # autoflush выключен: без этого арбитр увидит старый факт активным
 

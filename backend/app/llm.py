@@ -27,8 +27,12 @@ def enabled() -> bool:
 
 
 def status() -> dict:
-    return {"enabled": enabled(), "model": settings.llm_model if enabled() else None,
-            "base_url": settings.llm_base_url if enabled() else None, "last_error": _last_error["error"]}
+    return {
+        "enabled": enabled(),
+        "model": settings.llm_model if enabled() else None,
+        "base_url": settings.llm_base_url if enabled() else None,
+        "last_error": _last_error["error"],
+    }
 
 
 def _extract_json(text: str):
@@ -66,9 +70,12 @@ def chat_json(system: str, user: str, max_tokens: int = 1200, temperature: float
                 r.raise_for_status()
                 content = r.json()["choices"][0]["message"]["content"]
             log.info("LLM ответ за %.1f с", time.perf_counter() - t0)
-            return _extract_json(content)
+            parsed = _extract_json(content)
+            return parsed if isinstance(parsed, dict) else None
         except Exception as exc:  # noqa: BLE001
-            _last_error.update({"at": time.time(), "error": f"{exc.__class__.__name__}: {str(exc)[:200]}"})
+            _last_error.update(
+                {"at": time.time(), "error": exc.__class__.__name__}
+            )  # текст — только в лог: в нём бывают URL и ключи
             log.warning("LLM недоступна: %s", exc)
             if attempt == 0 and "response_format" in payload:
                 payload.pop("response_format", None)

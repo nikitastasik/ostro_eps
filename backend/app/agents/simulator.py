@@ -60,9 +60,14 @@ def hidden_truth(session: Session, hotel: Hotel) -> dict:
         "exaggerates": r.random() < 0.35,
     }
     if t["pets"]["allowed"]:
-        t["pets"].update({"animals": r.choice([["dog", "cat"], ["dog"], ["cat"], ["dog", "cat", "bird"]]),
-                          "max_weight": r.choice([5, 7, 10, 15, 25]), "fee": r.choice([0, 500, 1000, 1500]),
-                          "unit": r.choice(["night", "stay"])})
+        t["pets"].update(
+            {
+                "animals": r.choice([["dog", "cat"], ["dog"], ["cat"], ["dog", "cat", "bird"]]),
+                "max_weight": r.choice([5, 7, 10, 15, 25]),
+                "fee": r.choice([0, 500, 1000, 1500]),
+                "unit": r.choice(["night", "stay"]),
+            }
+        )
     return t
 
 
@@ -76,36 +81,61 @@ def rule_answer(session: Session, hotel: Hotel, key: str, question: Question) ->
     if key == "pets_policy":
         p = t["pets"]
         if not p["allowed"]:
-            return _pick(r, "К сожалению, с животными не размещаем.", "Нет, с питомцами нельзя.",
-                         "Животных не принимаем, извините.")
+            return _pick(
+                r, "К сожалению, с животными не размещаем.", "Нет, с питомцами нельзя.", "Животных не принимаем, извините."
+            )
         names = {"dog": "собак", "cat": "кошек", "bird": "птиц"}
         animals = " и ".join(names[a] for a in p["animals"])
-        fee = "бесплатно" if p["fee"] == 0 else f"доплата {p['fee']} руб {'в сутки' if p['unit'] == 'night' else 'за весь период проживания'}"
-        return _pick(r, f"Да, принимаем {animals} весом до {p['max_weight']} кг, {fee}.",
-                     f"Можно! Берём {animals}, но не более {p['max_weight']} кг. {fee.capitalize()}.",
-                     f"Размещаем {animals} до {p['max_weight']} килограмм, {fee}. Нужен ветпаспорт.")
+        fee = (
+            "бесплатно"
+            if p["fee"] == 0
+            else f"доплата {p['fee']} руб {'в сутки' if p['unit'] == 'night' else 'за весь период проживания'}"
+        )
+        return _pick(
+            r,
+            f"Да, принимаем {animals} весом до {p['max_weight']} кг, {fee}.",
+            f"Можно! Берём {animals}, но не более {p['max_weight']} кг. {fee.capitalize()}.",
+            f"Размещаем {animals} до {p['max_weight']} килограмм, {fee}. Нужен ветпаспорт.",
+        )
     if key == "blackout_curtains":
-        return {"all": _pick(r, "Да, во всех номерах плотные блэкаут-шторы.", "Есть, блэкаут во всех номерах."),
-                "some": _pick(r, "Блэкаут-шторы есть только в номерах категории люкс.", "В части номеров есть плотные шторы, уточняйте при бронировании."),
-                "none": _pick(r, "Нет, обычные шторы, но есть жалюзи.", "Плотных штор нет.")}[t["curtains"]]
+        return {
+            "all": _pick(r, "Да, во всех номерах плотные блэкаут-шторы.", "Есть, блэкаут во всех номерах."),
+            "some": _pick(
+                r,
+                "Блэкаут-шторы есть только в номерах категории люкс.",
+                "В части номеров есть плотные шторы, уточняйте при бронировании.",
+            ),
+            "none": _pick(r, "Нет, обычные шторы, но есть жалюзи.", "Плотных штор нет."),
+        }[t["curtains"]]
     if key == "soundproofing":
-        return {"standard": _pick(r, "Стоят обычные пластиковые стеклопакеты.", "Обычные стеклопакеты, специальной шумоизоляции нет."),
-                "soundproof": _pick(r, "Окна шумозащитные, со стороны проспекта поставили шумоизоляцию.", "Да, у нас звукоизоляция окон."),
-                "triple": _pick(r, "Тройные стеклопакеты во всех номерах.", "Окна с тройным стеклопакетом.")}[t["windows"]]
+        return {
+            "standard": _pick(
+                r, "Стоят обычные пластиковые стеклопакеты.", "Обычные стеклопакеты, специальной шумоизоляции нет."
+            ),
+            "soundproof": _pick(
+                r, "Окна шумозащитные, со стороны проспекта поставили шумоизоляцию.", "Да, у нас звукоизоляция окон."
+            ),
+            "triple": _pick(r, "Тройные стеклопакеты во всех номерах.", "Окна с тройным стеклопакетом."),
+        }[t["windows"]]
     if key == "workspace":
         desk = "в номерах есть рабочий стол" if t["desk"] else "отдельного рабочего стола в номерах нет"
         cw = "есть лаунж-зона для работы" if t["coworking"] else "коворкинга нет"
         return f"{desk.capitalize()}, Wi-Fi около {t['wifi']} Мбит/с, {cw}."
     if key == "kids_facilities":
-        parts = ["детскую кроватку предоставим бесплатно" if t["crib"] else "детских кроваток нет",
-                 "детское меню есть" if t["kids_menu"] else "детского меню нет",
-                 "есть детский клуб с аниматорами" if t["kids_club"] else "детского клуба нет"]
+        parts = [
+            "детскую кроватку предоставим бесплатно" if t["crib"] else "детских кроваток нет",
+            "детское меню есть" if t["kids_menu"] else "детского меню нет",
+            "есть детский клуб с аниматорами" if t["kids_club"] else "детского клуба нет",
+        ]
         return (", ".join(parts))[:1].upper() + (", ".join(parts))[1:] + "."
     if key == "elevator":
         return "Да, лифт есть." if t["elevator"] else _pick(r, "Лифта нет.", "Нет, лифта нет, но поможем с багажом.")
     if key == "accessibility":
-        return {"yes": "Есть пандус и номер для гостей с инвалидностью.", "limited": "Частично: пандус есть, но в номера только по лестнице.",
-                "no": "К сожалению, отель не приспособлен для колясок, на входе ступеньки."}[t["wheelchair"]]
+        return {
+            "yes": "Есть пандус и номер для гостей с инвалидностью.",
+            "limited": "Частично: пандус есть, но в номера только по лестнице.",
+            "no": "К сожалению, отель не приспособлен для колясок, на входе ступеньки.",
+        }[t["wheelchair"]]
     if key == "car_access":
         if not t["own_parking"]:
             return "Своей парковки нет, рядом городская платная. Подъехать к входу можно, чтобы выгрузить багаж."
@@ -116,7 +146,9 @@ def rule_answer(session: Session, hotel: Hotel, key: str, question: Question) ->
         return _pick(r, f"В здании {lv}.", f"У нас {lv}, номера на всех этажах кроме первого.")
     if key == "building_history":
         if t["year"]:
-            return f"Здание построено в {t['year']} году." + (" Это памятник архитектуры." if t["year"] < 1960 and r.random() < 0.5 else "")
+            return f"Здание построено в {t['year']} году." + (
+                " Это памятник архитектуры." if t["year"] < 1960 and r.random() < 0.5 else ""
+            )
         return "Точный год постройки не знаем, здание реконструировали в 2015 году."
     if key == "room_orientation":
         sea = _rv(session, hotel.id, "sea_view") or {}
@@ -137,13 +169,18 @@ def rule_answer(session: Session, hotel: Hotel, key: str, question: Question) ->
         v = _rv(session, hotel.id, key) or {}
         noun = {"sea_view": "море", "sunset_view": "закат", "mountain_view": "горы"}[key]
         if question.reason == "conflict" and v.get("available") and r.random() < 0.7:
-            return _pick(r, f"Да, вы правы: {noun} видно только начиная с {v.get('min_floor') or 2} этажа.",
-                         f"Уточняю: {noun} видно с {v.get('min_floor') or 2} этажа, ниже закрывают соседние дома.")
+            return _pick(
+                r,
+                f"Да, вы правы: {noun} видно только начиная с {v.get('min_floor') or 2} этажа.",
+                f"Уточняю: {noun} видно с {v.get('min_floor') or 2} этажа, ниже закрывают соседние дома.",
+            )
         if t["exaggerates"]:
             return _pick(r, f"Конечно, {noun} видно из всех номеров!", f"Да, из всех номеров отличный вид на {noun}.")
         if not v.get("available"):
             return f"Нет, {noun} из номеров не видно."
-        return f"Да, {noun} видно начиная с {v.get('min_floor') or 2} этажа, окна на {FACADE_DIR.get(v.get('best_facade'), 'море')}."
+        return (
+            f"Да, {noun} видно начиная с {v.get('min_floor') or 2} этажа, окна на {FACADE_DIR.get(v.get('best_facade'), 'море')}."
+        )
     if key == "construction_nearby":
         return "Рядом стройки нет." if r.random() < 0.7 else "Да, через дорогу строят жилой дом, днём бывает шумно."
     return _pick(r, "Да, есть.", "Нет, такого нет.", "Да.")
@@ -156,9 +193,11 @@ def simulate_answer(session: Session, question: Question) -> str:
     if llm.enabled():
         res = llm.chat_json(
             "Ты отельер небольшой гостиницы в Сочи. Перепиши ответ гостю живым разговорным языком, сохранив ВСЕ факты "
-            "без изменений и не добавляя новых. Верни JSON {\"answer\": \"...\"}.",
-            json.dumps({"question": question.text, "facts_answer": base}, ensure_ascii=False), max_tokens=300,
-            temperature=0.7)
+            'без изменений и не добавляя новых. Верни JSON {"answer": "..."}.',
+            json.dumps({"question": question.text, "facts_answer": base}, ensure_ascii=False),
+            max_tokens=300,
+            temperature=0.7,
+        )
         if res and isinstance(res.get("answer"), str) and len(res["answer"]) > 5:
             return res["answer"]
     return base
